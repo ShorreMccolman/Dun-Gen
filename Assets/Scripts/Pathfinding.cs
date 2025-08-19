@@ -30,6 +30,9 @@ namespace DunGen
         List<PathNode> Open;
         List<PathNode> Closed;
 
+        // 
+        // Initialize pathfinding nodes using a grid of map tiles
+        //
         public void CreateNetwork(int width, int height, List<MapTile> grid)
         {
             Grid = new List<PathNode>();
@@ -62,6 +65,9 @@ namespace DunGen
             }
         }
 
+        //
+        // Typical A* pathfinding algorithm
+        //
         public List<MapTile> FindPath(MapTile start, MapTile target)
         {
             Open = new List<PathNode>();
@@ -142,6 +148,17 @@ namespace DunGen
             return null;
         }
 
+        //
+        // Since no diagonal movement across the grid is allowed we can use the Manhattan distance for our heuristic, at least for now this is our best option
+        //
+        public float EvaluateH(MapTile current, MapTile next)
+        {
+            return Mathf.Abs(current.X - next.X) + Mathf.Abs(current.Y - next.Y);
+        }
+
+        //
+        // Helper function for finding the nearest tile from a list of given options. Just a one off operation so no need to sort
+        //
         public MapTile FindNearestNode(MapTile current, List<MapTile> options)
         {
             MapTile best = null;
@@ -162,11 +179,9 @@ namespace DunGen
             return best;
         }
 
-        public float EvaluateH(MapTile current, MapTile next)
-        {
-            return Mathf.Abs(current.X - next.X) + Mathf.Abs(current.Y - next.Y);
-        }
-
+        //
+        // Returns the ordered list of map tiles that will form our path
+        //
         List<MapTile> ConstructPath(PathNode endNode)
         {
             List<MapTile> path = new List<MapTile>();

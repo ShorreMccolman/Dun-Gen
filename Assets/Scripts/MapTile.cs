@@ -122,27 +122,14 @@ namespace DunGen
             }
         }
 
-        public void UpdateTileIDByConnectedNeighbors(List<MapTile> grid, int width, int height)
-        {
-            if (_type == ECellType.Unoccupied)
-                return;
-
-            int bitval = 0;
-
-            List<MapTile> neighbors = GetOccupiedNeighbors(grid, width, height);
-
-            bitval += IsCellConnected(ECardinal.W) && neighbors[3].IsCellConnected(ECardinal.N) && IsCellConnected(ECardinal.N) && neighbors[0].IsCellConnected(ECardinal.W) ? 1 : 0;
-            bitval += IsCellConnected(ECardinal.W) ? 2 : 0;
-            bitval += IsCellConnected(ECardinal.W) && neighbors[3].IsCellConnected(ECardinal.S) && IsCellConnected(ECardinal.S) && neighbors[2].IsCellConnected(ECardinal.W) ? 4 : 0;
-            bitval += IsCellConnected(ECardinal.N) ? 8 : 0;
-            bitval += IsCellConnected(ECardinal.S) ? 16 : 0;
-            bitval += IsCellConnected(ECardinal.N) && neighbors[0].IsCellConnected(ECardinal.E) && IsCellConnected(ECardinal.E) && neighbors[1].IsCellConnected(ECardinal.N) ? 32 : 0;
-            bitval += IsCellConnected(ECardinal.E) ? 64 : 0;
-            bitval += IsCellConnected(ECardinal.S) && neighbors[2].IsCellConnected(ECardinal.E) && IsCellConnected(ECardinal.E) && neighbors[1].IsCellConnected(ECardinal.S) ? 128 : 0;
-
-            UpdateTileID(bitval);
-        }
-
+        //
+        // This determines the tile ID based on which neighboring cells are occupied.
+        // It uses a bitmap style algorithm which sets the sprite of the tile based on the resulting value
+        // 
+        //       0 3 5
+        //       1 X 6    X is the current cell and the indices refer to particular neighbors based on this diagram
+        //       2 4 7
+        //
         public void UpdateTileProximity(List<MapTile> grid, int width, int height)
         {
             if (_type == ECellType.Unoccupied)
@@ -189,43 +176,34 @@ namespace DunGen
             UpdateTileID(bitval);
         }
 
-        public void UpdateTileAsNeighbor(MapTile grid, int width, int height)
+        //
+        // This uses neighbor connectedness to update the cells tile ID as opposed to simply relying on whether that neighbor is occupied or not
+        // This allows us to place walls in between neighboring cells to create more intricate layouts
+        //
+        public void UpdateTileIDByConnectedNeighbors(List<MapTile> grid, int width, int height)
         {
+            if (_type == ECellType.Unoccupied)
+                return;
+
             int bitval = 0;
 
-            bool[] comp = new bool[8];
-            int k = 0;
-            for (int i = -1; i <= 1; i++)
-            {
-                for (int j = -1; j <= 1; j++)
-                {
-                    if (i == 0 && j == 0)
-                        continue;
+            List<MapTile> neighbors = GetOccupiedNeighbors(grid, width, height);
 
-                    int newX = _x + i;
-                    int newY = _y + j;
-
-                    if (newX != grid.X || newY != grid.Y)
-                        comp[k] = false;
-                    else
-                        comp[k] = true;
-
-                    k++;
-                }
-            }
-
-            bitval += comp[0] && comp[1] && comp[3] ? 1 : 0;
-            bitval += comp[1] ? 2 : 0;
-            bitval += comp[2] && comp[1] && comp[4] ? 4 : 0;
-            bitval += comp[3] ? 8 : 0;
-            bitval += comp[4] ? 16 : 0;
-            bitval += comp[5] && comp[3] && comp[6] ? 32 : 0;
-            bitval += comp[6] ? 64 : 0;
-            bitval += comp[7] && comp[4] && comp[6] ? 128 : 0;
+            bitval += IsCellConnected(ECardinal.W) && neighbors[3].IsCellConnected(ECardinal.N) && IsCellConnected(ECardinal.N) && neighbors[0].IsCellConnected(ECardinal.W) ? 1 : 0;
+            bitval += IsCellConnected(ECardinal.W) ? 2 : 0;
+            bitval += IsCellConnected(ECardinal.W) && neighbors[3].IsCellConnected(ECardinal.S) && IsCellConnected(ECardinal.S) && neighbors[2].IsCellConnected(ECardinal.W) ? 4 : 0;
+            bitval += IsCellConnected(ECardinal.N) ? 8 : 0;
+            bitval += IsCellConnected(ECardinal.S) ? 16 : 0;
+            bitval += IsCellConnected(ECardinal.N) && neighbors[0].IsCellConnected(ECardinal.E) && IsCellConnected(ECardinal.E) && neighbors[1].IsCellConnected(ECardinal.N) ? 32 : 0;
+            bitval += IsCellConnected(ECardinal.E) ? 64 : 0;
+            bitval += IsCellConnected(ECardinal.S) && neighbors[2].IsCellConnected(ECardinal.E) && IsCellConnected(ECardinal.E) && neighbors[1].IsCellConnected(ECardinal.S) ? 128 : 0;
 
             UpdateTileID(bitval);
         }
 
+        //
+        // Gets a random unoccupied tile in one of the four cardinal directions
+        //
         public MapTile GetRandomUnoccupiedNeighbor(List<MapTile> grid, int width, int height)
         {
             List<MapTile> neighbors = GetUnoccupiedNeighbors(grid, width, height);
@@ -242,46 +220,18 @@ namespace DunGen
             return null;
         }
 
-        public MapTile GetUnoccupiedNeighborInDirection(List<MapTile> grid, int width, int height, ECardinal direction)
-        {
-            MapTile cell = GetCellInDirection(grid, width, height, direction);
-            if (cell != null && cell.CellType == ECellType.Unoccupied)
-                return cell;
-
-            return null;
-        }
-
+        //
+        // Automatically sets a nighboring tile in a particular cardinal direction to be connected
+        // TODO: Should maybe verify that tile is occupied?
+        //
         public void ConnectCardinally(ECardinal direction)
         {
             _connections[(int)direction] = true;
         }
 
-        public MapTile GetCellInDirection(List<MapTile> grid, int width, int height, ECardinal direction)
-        {
-            int xDiff = 0, yDiff = 0;
-            switch (direction)
-            {
-                case ECardinal.N:
-                    xDiff = 0;
-                    yDiff = -1;
-                    break;
-                case ECardinal.E:
-                    xDiff = 1;
-                    yDiff = 0;
-                    break;
-                case ECardinal.S:
-                    xDiff = 0;
-                    yDiff = 1;
-                    break;
-                case ECardinal.W:
-                    xDiff = -1;
-                    yDiff = 0;
-                    break;
-            }
-
-            return GetTileByPosition(grid, _x + xDiff, _y + yDiff, width, height);
-        }
-
+        //
+        // Sets the tile to type to either an entrance or an exit and updates the sprite accordingly
+        //
         public void SetAsDoor(bool isExit)
         {
             _type = ECellType.Door;
@@ -357,6 +307,47 @@ namespace DunGen
             neighbors.Add(GetOccupiedCell(grid, _x, _y + 1, width, height));
             neighbors.Add(GetOccupiedCell(grid, _x - 1, _y, width, height));
             return neighbors;
+        }
+
+        //
+        // Returns the neighboring tile in a particular cardinal direction
+        //
+        public MapTile GetTileInDirection(List<MapTile> grid, int width, int height, ECardinal direction)
+        {
+            int xDiff = 0, yDiff = 0;
+            switch (direction)
+            {
+                case ECardinal.N:
+                    xDiff = 0;
+                    yDiff = -1;
+                    break;
+                case ECardinal.E:
+                    xDiff = 1;
+                    yDiff = 0;
+                    break;
+                case ECardinal.S:
+                    xDiff = 0;
+                    yDiff = 1;
+                    break;
+                case ECardinal.W:
+                    xDiff = -1;
+                    yDiff = 0;
+                    break;
+            }
+
+            return GetTileByPosition(grid, _x + xDiff, _y + yDiff, width, height);
+        }
+
+        //
+        // Returns the neighboring tile in a particular cardinal direction if it is unoccupied
+        //
+        public MapTile GetUnoccupiedTileInDirection(List<MapTile> grid, int width, int height, ECardinal direction)
+        {
+            MapTile cell = GetTileInDirection(grid, width, height, direction);
+            if (cell != null && cell.CellType == ECellType.Unoccupied)
+                return cell;
+
+            return null;
         }
         #endregion
     }

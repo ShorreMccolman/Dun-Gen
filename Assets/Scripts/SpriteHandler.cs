@@ -3,6 +3,10 @@ using UnityEngine;
 
 namespace DunGen
 {
+    ///
+    /// This sprite handler class is ripped from my game where its more relevant, not sure if I want to use this for release or not
+    /// but I already have it set up so might as well just use it for now
+    /// 
     public static class SpriteHandler
     {
         static Dictionary<string, Sprite> _spriteDict = new Dictionary<string, Sprite>();
