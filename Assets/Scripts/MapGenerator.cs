@@ -129,6 +129,16 @@ namespace DunGen
         //
         public MapData GenerateInstant(GenerationSettings settings)
         {
+            if (_map != null)
+            {
+                foreach (var cell in _map)
+                {
+                    Destroy(cell.gameObject);
+                }
+                _map.Clear();
+                _pathfinding = new Pathfinding();
+            }
+
             PopulateBlankCells(settings.GridWidth, settings.GridHeight);
 
             // Pick rooms
@@ -150,21 +160,24 @@ namespace DunGen
             }
 
             // Create branches
-            List<MapTile> Edges = GetBranchableEdges();
-            int branchCount = 10;
-            Edges.Shuffle();
-            while (Edges.Count > 0)
+            if (settings.CanBranch)
             {
-                bool success = CreateBranch(Edges[0]);
-
-                if (success)
+                List<MapTile> Edges = GetBranchableEdges();
+                int branchCount = 10;
+                Edges.Shuffle();
+                while (Edges.Count > 0)
                 {
-                    branchCount--;
-                    if (branchCount <= 0)
-                        break;
-                }
+                    bool success = CreateBranch(Edges[0], settings.GetRandomBranchType());
 
-                Edges.RemoveAt(0);
+                    if (success)
+                    {
+                        branchCount--;
+                        if (branchCount <= 0)
+                            break;
+                    }
+
+                    Edges.RemoveAt(0);
+                }
             }
 
             // Create Entrance and Exit
@@ -245,7 +258,7 @@ namespace DunGen
             Edges.Shuffle();
             while (Edges.Count > 0)
             {
-                bool success = CreateBranch(Edges[0]);
+                bool success = CreateBranch(Edges[0], EBranchType.Shoot);
 
                 if (success)
                 {
@@ -530,10 +543,8 @@ namespace DunGen
             return _map.FindAll(x => DungeonTileData.WallPieces.Contains(x.TileID) || DungeonTileData.HallPieces.Contains(x.TileID) || DungeonTileData.TurnPieces.Contains(x.TileID));
         }
 
-        bool CreateBranch(MapTile startingCell)
+        bool CreateBranch(MapTile startingCell, EBranchType type)
         {
-            EBranchType type = (EBranchType)Random.Range(0, (int)EBranchType.Count);
-
             switch (type)
             {
                 case EBranchType.Shoot:

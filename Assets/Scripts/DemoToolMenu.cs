@@ -17,7 +17,8 @@ public class DemoToolMenu : DoneGenMenu
             GameStyle = EGameStyle.FirstPerson,
             GridWidth = 36,
             GridHeight = 20,
-            PrimaryRooms = new ValueRange(25, 35)
+            PrimaryRooms = new ValueRange(25, 35),
+            BranchTypes = new EBranchType[] { EBranchType.Shoot, EBranchType.Snake, EBranchType.Bridge, EBranchType.Crank }
         };
 
         DungeonBuilder.Instance.BuildAndLaunch(settings);

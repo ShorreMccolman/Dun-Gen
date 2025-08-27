@@ -33,10 +33,17 @@ public struct GenerationSettings
     public int GridWidth, GridHeight;
     public ValueRange PrimaryRooms;
 
-    public bool CanShoot;
-    public bool CanSnake;
-    public bool CanBridge;
-    public bool CanCrank;
+    public DunGen.EBranchType[] BranchTypes;
+
+    public bool CanBranch => BranchTypes != null && BranchTypes.Length > 0;
+
+    public DunGen.EBranchType GetRandomBranchType()
+    {
+        if (BranchTypes == null || BranchTypes.Length == 0)
+            return DunGen.EBranchType.Count;
+
+        return BranchTypes[Random.Range(0, BranchTypes.Length)];
+    }
 }
 
 [CreateAssetMenu(menuName = "DoneGen/Generation Settings")]
