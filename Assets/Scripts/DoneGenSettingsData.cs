@@ -49,6 +49,6 @@ public struct GenerationSettings
 [CreateAssetMenu(menuName = "DoneGen/Generation Settings")]
 public class DoneGenSettingsData : ScriptableObject
 {
-    [SerializeField] string SettingsName;
-    [SerializeField] GenerationSettings Settings;
+    [SerializeField] public string SettingsName;
+    [SerializeField] public GenerationSettings Settings;
 }

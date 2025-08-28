@@ -21,10 +21,40 @@ public class DemoSettingsMenu : DoneGenMenu
 
     [SerializeField] DunGen.MapGenerator Generator;
 
+    GenerationSettings _defaults;
+
+    protected override void Init()
+    {
+        DoneGenSettingsData data = Resources.Load<DoneGenSettingsData>("Settings/Default");
+
+        if(data == null)
+        {
+            Debug.LogError("Could not find default generation settings!!");
+        }
+        else
+        {
+            _defaults = data.Settings;
+        }
+    }
+
     protected override void OnOpen()
     {
-        XDimension.text = "36";
-        YDimension.text = "20";
+        RestoreDefaults();
+    }
+
+    public void RestoreDefaults()
+    {
+        DungeonStyle.value = (int)_defaults.GameStyle;
+        XDimension.text = _defaults.GridWidth.ToString();
+        YDimension.text = _defaults.GridHeight.ToString();
+        RoomCount.LowValue = _defaults.PrimaryRooms.Min;
+        RoomCount.HighValue = _defaults.PrimaryRooms.Max;
+
+        List<DunGen.EBranchType> types = new List<DunGen.EBranchType>(_defaults.BranchTypes);
+        Shoot.isOn = types.Contains(DunGen.EBranchType.Shoot);
+        Snake.isOn = types.Contains(DunGen.EBranchType.Snake);
+        Bridge.isOn = types.Contains(DunGen.EBranchType.Bridge);
+        Crank.isOn = types.Contains(DunGen.EBranchType.Crank);
     }
 
     public void PreviewCurrentSettings()
