@@ -88,6 +88,19 @@ public class DoneGenMenu : MonoBehaviour
         OpenMenu(menuTag);
     }
 
+    public static DoneGenMenu OpenPopup(string menuTag)
+    {
+        if (!_menuDict.ContainsKey(menuTag))
+        {
+            Debug.LogError("Attempting to open missing menu with tag * " + menuTag + " *");
+            return null;
+        }
+
+        DoneGenMenu menu = _menuDict[menuTag];
+        menu.Open();
+        return menu;
+    }
+
     public static void EscapeCurrent()
     {
         if (_menuStack.Count > 0)

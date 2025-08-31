@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UI.Extensions;
 using TMPro;
+using UnityEditor;
 
 public class DemoSettingsMenu : DoneGenMenu
 {
@@ -79,5 +80,48 @@ public class DemoSettingsMenu : DoneGenMenu
         };
 
         DunGen.MapData mapData = Generator.GenerateInstant(settings);
+    }
+
+    public void SaveCurrentSettings()
+    {
+#if UNITY_EDITOR
+        string text = "Save current settings to scriptable object? Will be found at 'Assets/Resources/Settings/[filename].asset'";
+#else
+        string text = "This feature is not available in builds, please run in editor to s";
+#endif
+
+        PopupMenu.Popup(text, SaveAs);
+    }
+
+    void SaveAs(string fileName)
+    {
+#if UNITY_EDITOR
+        List<DunGen.EBranchType> branchTypes = new List<DunGen.EBranchType>();
+        if (Shoot.isOn)
+            branchTypes.Add(DunGen.EBranchType.Shoot);
+        if (Snake.isOn)
+            branchTypes.Add(DunGen.EBranchType.Snake);
+        if (Bridge.isOn)
+            branchTypes.Add(DunGen.EBranchType.Bridge);
+        if (Crank.isOn)
+            branchTypes.Add(DunGen.EBranchType.Crank);
+
+        GenerationSettings settings = new GenerationSettings()
+        {
+            GameStyle = (EGameStyle)DungeonStyle.value,
+            GridWidth = int.Parse(XDimension.text),
+            GridHeight = int.Parse(YDimension.text),
+            PrimaryRooms = new ValueRange((int)RoomCount.LowValue, (int)RoomCount.HighValue),
+            BranchTypes = branchTypes.ToArray()
+        };
+
+        DoneGenSettingsData data = ScriptableObject.CreateInstance<DoneGenSettingsData>();
+        data.SettingsName = fileName;
+        data.Settings = settings;
+
+        AssetDatabase.CreateAsset(data, "Assets/Resources/Settings/" + fileName + ".asset");
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+#endif
     }
 }
