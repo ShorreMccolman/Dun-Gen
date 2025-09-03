@@ -6,9 +6,26 @@ namespace DunGen
 {
     public struct MapData
     {
-        public List<MapTile> Map;
-        public MapTile Entrance;
-        public ECardinal StartingDirection;
+        public List<MapTile> Map { get; private set; }
+        public MapTile Entrance { get; private set; }
+        public ECardinal StartingDirection { get; private set; }
+
+        public int Width { get; private set; }
+        public int Height { get; private set; }
+
+        public MapData(List<MapTile> tiles, MapTile entranceTile, ECardinal startingDir, int width, int height)
+        {
+            Map = tiles;
+            Entrance = entranceTile;
+            StartingDirection = startingDir;
+            Width = width;
+            Height = height;
+        }
+
+        public MapTile GetTile(int x, int y)
+        {
+            return MapTile.GetTileByPosition(Map, x, y, Width, Height);
+        }
     }
 
     [RequireComponent(typeof(MapGenerator))]
@@ -20,6 +37,7 @@ namespace DunGen
 
         [SerializeField] GameObject PlayerObject;
         [SerializeField] DungeonTileData TileSet;
+        [SerializeField] GameMap GameMap;
 
         MapGenerator _generator;
 
@@ -36,7 +54,9 @@ namespace DunGen
             MapData mapData = _generator.GenerateInstant(settings);
 
             SpawnDungeonTiles(mapData.Map);
-            SpawnPlayer(mapData.Entrance, mapData.StartingDirection);
+            IDGPlayerController player = SpawnPlayer(mapData.Entrance, mapData.StartingDirection);
+
+            GameMap.Initialize(player, mapData);
         }
 
         //
@@ -62,10 +82,11 @@ namespace DunGen
         //  user has set up for their game. Right now we're just worrying about supporting our demo controllers so that user specific stuff
         //  can be handled later on.
         //
-        public void SpawnPlayer(MapTile entrance, ECardinal direction)
+        public IDGPlayerController SpawnPlayer(MapTile entrance, ECardinal direction)
         {
-            GameObject player = Instantiate(PlayerObject, new Vector3(entrance.X, 0, -entrance.Y), Quaternion.identity);
-            FPSPlayer controller = player.GetComponent<FPSPlayer>();
+            GameObject go = Instantiate(PlayerObject, new Vector3(entrance.X, 0, -entrance.Y), Quaternion.identity);
+            IDGPlayerController controller = go.GetComponent<IDGPlayerController>();
+            return controller;
         }
     }
 }

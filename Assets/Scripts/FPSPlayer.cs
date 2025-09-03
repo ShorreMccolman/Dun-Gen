@@ -1,8 +1,9 @@
 using System;
 using UnityEngine;
+using DunGen;
 
 [RequireComponent(typeof(CharacterController))]
-public class FPSPlayer : MonoBehaviour
+public class FPSPlayer : MonoBehaviour, IDGPlayerController
 {
     [SerializeField] float _walkSpeed;
     [SerializeField] float _runSpeed;
@@ -65,5 +66,15 @@ public class FPSPlayer : MonoBehaviour
 
             _transform.rotation *= Quaternion.Euler(0, Input.GetAxis("Mouse X") * _lookSpeed, 0);
         }
+    }
+
+    public Transform GetTransform()
+    {
+        if(_transform == null)
+        {
+            _transform = transform;
+        }
+
+        return _transform;
     }
 }

@@ -5,6 +5,8 @@ using DunGen;
 
 public class DemoToolMenu : DoneGenMenu
 {
+    [SerializeField] DoneGenSettingsData CurrentSettings;
+
     protected override void Init()
     {
         Open();
@@ -12,16 +14,7 @@ public class DemoToolMenu : DoneGenMenu
 
     public void FPDungeonPressed()
     {
-        GenerationSettings settings = new GenerationSettings()
-        {
-            GameStyle = EGameStyle.FirstPerson,
-            GridWidth = 36,
-            GridHeight = 20,
-            PrimaryRooms = new ValueRange(25, 35),
-            BranchTypes = new EBranchType[] { EBranchType.Shoot, EBranchType.Snake, EBranchType.Bridge, EBranchType.Crank }
-        };
-
-        DungeonBuilder.Instance.BuildAndLaunch(settings);
+        DungeonBuilder.Instance.BuildAndLaunch(GetSettings());
         Close();
     }
 
@@ -32,7 +25,7 @@ public class DemoToolMenu : DoneGenMenu
             GameStyle = EGameStyle.TopDown,
         };
 
-        DungeonBuilder.Instance.BuildAndLaunch(settings);
+        DungeonBuilder.Instance.BuildAndLaunch(GetSettings());
         Close();
     }
 
@@ -44,5 +37,25 @@ public class DemoToolMenu : DoneGenMenu
     public void QuitToDesktopPressed()
     {
         Application.Quit();
+    }
+
+    GenerationSettings GetSettings()
+    {
+        if (CurrentSettings == null)
+        {
+            GenerationSettings settings = new GenerationSettings()
+            {
+                GameStyle = EGameStyle.FirstPerson,
+                GridWidth = 36,
+                GridHeight = 20,
+                PrimaryRooms = new ValueRange(25, 35),
+                BranchTypes = new EBranchType[] { EBranchType.Shoot, EBranchType.Snake, EBranchType.Bridge, EBranchType.Crank }
+            };
+            return settings;
+        }
+        else
+        {
+            return CurrentSettings.Settings;
+        }
     }
 }

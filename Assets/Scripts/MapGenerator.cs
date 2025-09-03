@@ -190,13 +190,7 @@ namespace DunGen
             endPieces[0].SetAsDoor(false);
             endPieces[1].SetAsDoor(true);
 
-            MapData results = new MapData()
-            {
-                Map = _map,
-                Entrance = _entrance,
-                StartingDirection = ECardinal.N
-            };
-            return results;
+            return new MapData(_map, _entrance, ECardinal.N, _width, _height);
         }
 
 

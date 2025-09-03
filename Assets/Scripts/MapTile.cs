@@ -245,7 +245,7 @@ namespace DunGen
         //
         // Returns a tile in the grid by position
         //
-        public MapTile GetTileByPosition(List<MapTile> grid, int x, int y, int width, int height)
+        public static MapTile GetTileByPosition(List<MapTile> grid, int x, int y, int width, int height)
         {
             if (x < 0 || x > width - 1 || y < 0 || y > height - 1)
             {
@@ -258,7 +258,7 @@ namespace DunGen
         //
         // Returns an unoccupied tile in the grid by position
         //
-        public MapTile GetUnoccupiedTileByPosition(List<MapTile> grid, int x, int y, int width, int height)
+        public static MapTile GetUnoccupiedTileByPosition(List<MapTile> grid, int x, int y, int width, int height)
         {
             MapTile cell = GetTileByPosition(grid, x, y, width, height);
             if (cell == null || cell.CellType != ECellType.Unoccupied)
@@ -285,7 +285,7 @@ namespace DunGen
         //
         // Returns an occupied tile in the grid by position
         //
-        public MapTile GetOccupiedCell(List<MapTile> grid, int x, int y, int width, int height)
+        public static MapTile GetOccupiedCell(List<MapTile> grid, int x, int y, int width, int height)
         {
             MapTile neighbor = GetTileByPosition(grid, x, y, width, height);
             if (neighbor == null || neighbor.CellType == ECellType.Unoccupied)
