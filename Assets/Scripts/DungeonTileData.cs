@@ -70,6 +70,8 @@ public class DungeonTileData : ScriptableObject
     public GameObject Tile_254;
     public GameObject Tile_255;
 
+    public GameObject[] PremadeTiles;
+
     public GameObject GetTile(int id)
     {
         switch(id)

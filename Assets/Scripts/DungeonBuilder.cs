@@ -53,7 +53,7 @@ namespace DunGen
         {
             MapData mapData = _generator.GenerateInstant(settings);
 
-            SpawnDungeonTiles(mapData.Map);
+            SpawnDungeonTiles(mapData);
             IDGPlayerController player = SpawnPlayer(mapData.Entrance, mapData.StartingDirection);
 
             GameMap.Initialize(player, mapData);
@@ -63,9 +63,19 @@ namespace DunGen
         // This spawns in our 3D dungeon matching the generated map tiles. Uses the chosen 3D tile set objects
         // TODO: Add the ability to set the tile set (not currently neccesary since we only have one tile set at the moment)
         //
-        public void SpawnDungeonTiles(List<MapTile> map)
+        public void SpawnDungeonTiles(MapData data)
         {
-            foreach (var square in map)
+            foreach(var premade in TileSet.PremadeTiles)
+            {
+                PremadeTile tile = premade.GetComponent<PremadeTile>();
+                int index = FindMatchingTileGroup(data, tile);
+                if(index >= 0)
+                {
+                    // TODO: Replace this section of the dungeon with the premade tile and flag
+                }
+            }
+
+            foreach (var square in data.Map)
             {
                 if (square.CellType != ECellType.Unoccupied)
                 {
@@ -87,6 +97,54 @@ namespace DunGen
             GameObject go = Instantiate(PlayerObject, new Vector3(entrance.X, 0, -entrance.Y), Quaternion.identity);
             IDGPlayerController controller = go.GetComponent<IDGPlayerController>();
             return controller;
+        }
+
+        //
+        // Pattern recognition algorithm for matching map data with a premade tile layout
+        //
+        public int FindMatchingTileGroup(MapData data, PremadeTile tile)
+        {
+            int[] ids = tile.GetGridIDs();
+
+            for(int i=0; i<data.Width; i++)
+            {
+                for(int j = 0; j<data.Height; i++)
+                {
+                    // Only need to compare if the premade tile can fit at current index (disregard indexes too close to the right or bottom edge)
+                    if(data.Width - i >= tile.Width && data.Height - j >= tile.Height)
+                    {
+                        int currentIndex = i + j * data.Width;
+                        bool isMatch = ScanForMatch(data, currentIndex, ids, tile.Width, tile.Height);
+                        if(isMatch)
+                        {
+                            return currentIndex;
+                        }
+                    }
+                }
+            }
+
+            return -1;
+        }
+
+        //
+        // Compare a premade tile with a same size chunk of the full map
+        //
+        bool ScanForMatch(MapData mapData, int startingIndex, int[] ids, int tileWidth, int tileHeight)
+        {
+            for (int i = 0; i < tileWidth; i++)
+            {
+                for (int j = 0; j < tileHeight; j++)
+                {
+                    int tileIndex = i + j * tileWidth;                          // current index for the tile itself
+                    int mapIndex = startingIndex + i + j * mapData.Width;       // matching index for the chunk of the full map we are comparing to
+
+                    if (ids[tileIndex] != mapData.Map[mapIndex].TileID)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
     }
 }
