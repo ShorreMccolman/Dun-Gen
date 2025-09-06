@@ -36,6 +36,9 @@ namespace DunGen
         public ECellType CellType => _type;
         ECellType _type;
 
+        public bool IsPremade => _isPremade;
+        bool _isPremade;
+
         //
         // Connections is an array that encodes whether or not neighboring tiles are connected or not.
         // A neighboring tile is not neccesarily connected just because it is occupied, this allows us to determine whether or not
@@ -240,6 +243,13 @@ namespace DunGen
             UpdateSprite(SpriteHandler.FetchSprite("Grid/Wall_" + _tileID + suffix));
         }
 
+        //
+        // Sets the tile to premade tile to flag that we shouldn't spawn it in as generic
+        //
+        public void SetAsPremade()
+        {
+            _isPremade = true;
+        }
 
         #region Tile Getters
         //

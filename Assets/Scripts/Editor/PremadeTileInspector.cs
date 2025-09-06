@@ -27,12 +27,12 @@ public class PremadeTileInspector : Editor
             _tile.Sprites = new Sprite[_width * _height];
         }
 
-        for (int i = 0; i < _width; i++)
+        for (int i = 0; i < _height; i++)
         {
             GUILayout.BeginHorizontal();
-            for (int j = 0; j < _height; j++)
+            for (int j = 0; j < _width; j++)
             {
-                int index = i + j * _width;
+                int index = j + i * _width;
                 _tile.Sprites[index] = (Sprite)EditorGUILayout.ObjectField(_tile.Sprites[index], typeof(Sprite), true, GUILayout.Width(100f), GUILayout.Height(100f));
             }
             GUILayout.EndHorizontal();

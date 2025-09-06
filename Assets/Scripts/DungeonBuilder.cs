@@ -71,13 +71,25 @@ namespace DunGen
                 int index = FindMatchingTileGroup(data, tile);
                 if(index >= 0)
                 {
-                    // TODO: Replace this section of the dungeon with the premade tile and flag
+                    // Replace this section of the dungeon with the premade tile
+                    for(int i=0;i<tile.Width;i++)
+                    {
+                        for(int j=0;j<tile.Height;j++)
+                        {
+                            int currentMapIndex = index + i + j * data.Width;
+                            data.Map[currentMapIndex].SetAsPremade();
+                        }
+                    }
+
+                    MapTile mapTile = data.Map[index];
+                    GameObject go = Instantiate(premade, transform);
+                    go.transform.SetPositionAndRotation(new Vector3(mapTile.X, 0, -mapTile.Y), Quaternion.identity);
                 }
             }
 
             foreach (var square in data.Map)
             {
-                if (square.CellType != ECellType.Unoccupied)
+                if (square.CellType != ECellType.Unoccupied && !square.IsPremade)
                 {
                     GameObject go = Instantiate(TileSet.GetTile(square.TileID), transform);
                     go.transform.SetPositionAndRotation(new Vector3(square.X, 0, -square.Y), Quaternion.identity);
@@ -106,9 +118,9 @@ namespace DunGen
         {
             int[] ids = tile.GetGridIDs();
 
-            for(int i=0; i<data.Width; i++)
+            for (int i=0; i<data.Width; i++)
             {
-                for(int j = 0; j<data.Height; i++)
+                for(int j = 0; j<data.Height; j++)
                 {
                     // Only need to compare if the premade tile can fit at current index (disregard indexes too close to the right or bottom edge)
                     if(data.Width - i >= tile.Width && data.Height - j >= tile.Height)
