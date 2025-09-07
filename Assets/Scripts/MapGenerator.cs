@@ -72,7 +72,7 @@ namespace DunGen
                 connection.First.ColorTile(color);
                 connection.Second.ColorTile(color);
 
-                foreach (var cell in connection.Path)
+                foreach (var cell in connection.Path) // TODO: Sometimes no path could be found, need to check for this when creating the path and then try a new node if no path was created
                 {
                     if (!AllCells.Contains(cell))
                     {
@@ -159,21 +159,20 @@ namespace DunGen
                 tile.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
             }
 
+            List<MapTile> Edges = GetBranchableEdges();
+
             // Create branches
             if (settings.CanBranch)
             {
-                List<MapTile> Edges = GetBranchableEdges();
                 int branchCount = 10;
                 Edges.Shuffle();
-                while (Edges.Count > 0)
+                while (Edges.Count > 0 && branchCount > 0)
                 {
                     bool success = CreateBranch(Edges[0], settings.GetRandomBranchType());
 
                     if (success)
                     {
                         branchCount--;
-                        if (branchCount <= 0)
-                            break;
                     }
 
                     Edges.RemoveAt(0);
@@ -182,13 +181,38 @@ namespace DunGen
 
             // Create Entrance and Exit
             List<MapTile> endPieces = _map.FindAll(x => DungeonTileData.EndPieces.Contains(x.TileID));
+            int doorsNeeded = 2 - endPieces.Count;
+            while (Edges.Count > 0)
+            {
+                bool success = CreateBranch(Edges[0], EBranchType.Shoot);
+
+                if (success)
+                {
+                    doorsNeeded--;
+                }
+
+                Edges.RemoveAt(0);
+
+                if(doorsNeeded <= 0)
+                {
+                    endPieces = _map.FindAll(x => DungeonTileData.EndPieces.Contains(x.TileID));
+                    break;
+                }
+            }
             endPieces.Shuffle();
 
-            _entrance = endPieces[0];
-            _exit = endPieces[1];
-
-            endPieces[0].SetAsDoor(false);
-            endPieces[1].SetAsDoor(true);
+            if (endPieces.Count < 2)
+            {
+                // This shouldn't be possible unless settings allowed for a exremely crowded dungeon which shouldn't be allowed so logging JIC
+                Debug.LogError("Cound not find end piece for entrance and or exit!!!");
+            }
+            else
+            {
+                _entrance = endPieces[0];
+                endPieces[0].SetAsDoor(false);
+                _exit = endPieces[1];
+                endPieces[1].SetAsDoor(true);
+            }
 
             return new MapData(_map, _entrance, ECardinal.N, _width, _height);
         }
@@ -389,6 +413,8 @@ namespace DunGen
 
         public List<Connection> ConnectNodes(List<MapTile> primary)
         {
+            List<MapTile> failedPaths = new List<MapTile>();
+
             // Create list of directly connected nodes
             List<Connection> connections = new List<Connection>();
             List<MapTile> unused = new List<MapTile>(primary);
@@ -401,12 +427,20 @@ namespace DunGen
 
                 List<MapTile> path = _pathfinding.FindPath(next, nearest);
 
-                if (unused.Contains(nearest))
+                if(path == null)
                 {
-                    unused.Remove(nearest);
+                    Debug.Log("Failed to create path to nearest node");
+                    failedPaths.Add(next);
                 }
+                else
+                {
+                    if (unused.Contains(nearest))
+                    {
+                        unused.Remove(nearest);
+                    }
 
-                connections.Add(new Connection(next, nearest, path));
+                    connections.Add(new Connection(next, nearest, path));
+                }
             }
             return connections;
         }
