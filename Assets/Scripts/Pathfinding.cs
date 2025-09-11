@@ -88,13 +88,9 @@ namespace DunGen
             node.h = EvaluateH(start, target);
             node.f = node.g + node.h;
 
-            int iteration = 0;
-
-            while (Open.Count > 0 && iteration < 100)
+            while (Open.Count > 0)
             {
                 PathNode current = Open[0];
-
-                iteration++;
 
                 if (current.Square == target)
                 {
@@ -145,6 +141,7 @@ namespace DunGen
                 }
             }
 
+            Debug.LogError("No path from " + start.X + ":" + start.Y + " to " + target.X + ":" + target.Y);
             return null;
         }
 
@@ -159,17 +156,20 @@ namespace DunGen
         //
         // Helper function for finding the nearest tile from a list of given options. Just a one off operation so no need to sort
         //
-        public MapTile FindNearestNode(MapTile current, List<MapTile> options)
+        public Room FindNearestNode(Room current, List<Room> options)
         {
-            MapTile best = null;
+            Room best = null;
             float bestDistance = float.MaxValue;
+
+            MapTile anchor = current.GetAnchorTile();
 
             foreach (var option in options)
             {
                 if (option == current)
                     continue;
 
-                float distance = EvaluateH(current, option);
+                MapTile target = option.GetAnchorTile();
+                float distance = EvaluateH(anchor, target);
                 if (distance < bestDistance)
                 {
                     best = option;
@@ -192,7 +192,6 @@ namespace DunGen
                 if (next.Square.CellType != ECellType.PrimaryRoom)
                 {
                     path.Insert(0, next.Square);
-                    next.Square.UpdateCellType(ECellType.Hallway);
                 }
                 next = next.Parent;
             }

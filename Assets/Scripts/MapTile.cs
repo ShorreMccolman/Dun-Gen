@@ -8,6 +8,7 @@ namespace DunGen
     {
         Unoccupied,
         PrimaryRoom,
+        PremadeRoom,
         Hallway,
         Border,
         Door,
@@ -33,11 +34,17 @@ namespace DunGen
         public int TileID => _tileID;
         int _tileID = -1;
 
+        public int RoomID => _roomID;
+        int _roomID = -1;
+
         public ECellType CellType => _type;
         ECellType _type;
 
         public bool IsPremade => _isPremade;
         bool _isPremade;
+
+        public bool IsAvailable => _isAvailable;
+        bool _isAvailable;
 
         //
         // Connections is an array that encodes whether or not neighboring tiles are connected or not.
@@ -49,12 +56,14 @@ namespace DunGen
         //
         // Set initial position in the grid
         //
-        public void SetPosition(int x, int y)
+        public void Init(int x, int y)
         {
             gameObject.name = x + "," + y;
             _x = x;
             _y = y;
             _connections = new bool[4] { false, false, false, false };
+            _isAvailable = true;
+            _isPremade = false;
         }
 
         //
@@ -64,6 +73,18 @@ namespace DunGen
         {
             _type = type;
             BG.enabled = type != ECellType.Unoccupied;
+            if(type != ECellType.Unoccupied)
+            {
+                _isAvailable = false;
+            }
+        }
+
+        //
+        // Room ID is used to group tiles together
+        //
+        public void UpdateRoomID(int id)
+        {
+            _roomID = id;
         }
 
         //

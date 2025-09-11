@@ -22,6 +22,15 @@ public static class MyExtensions
         }
     }
 
+    //
+    // Choose a random element of any list
+    //
+    public static T RandomChoice<T>(this IList<T> list)
+    {
+        int rand = rng.Next(0, list.Count);
+        return list[rand];
+    }
+
     ///
     // Shortcut for adding items to a dictionary of lists
     //

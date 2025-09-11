@@ -16,16 +16,57 @@ namespace DunGen
     }
 
     //
+    // 
+    //
+    public class Room
+    {
+        public List<MapTile> Tiles;
+        public int RoomID;
+        public bool IsPremade;
+
+        public int MinX, MaxX, MinY, MaxY;
+
+        public Room(List<MapTile> tiles, int id, bool isPremade = false)
+        {
+            Tiles = tiles;
+            RoomID = id;
+            IsPremade = isPremade;
+
+            MinX = tiles[0].X;
+            MaxX = tiles[0].X;
+            MinY = tiles[0].Y;
+            MaxY = tiles[0].Y;
+            foreach(var tile in tiles)
+            {
+                if (tile.X < MinX)
+                    MinX = tile.X;
+                if (tile.X > MaxX)
+                    MaxX = tile.X;
+                if (tile.Y < MinY)
+                    MinY = tile.Y;
+                if (tile.Y > MaxY)
+                    MaxY = tile.Y;
+            }
+        }
+
+        // TODO rethink this probably
+        public MapTile GetAnchorTile()
+        {
+            return Tiles.RandomChoice();
+        }
+    }
+
+    //
     // This class represents two primary dungeon rooms and the path/hallway connected them together.
     // Used as an intermediate step for generating the full map
     //
     public class Connection
     {
-        public MapTile First;
-        public MapTile Second;
+        public Room First;
+        public Room Second;
         public List<MapTile> Path;
 
-        public Connection(MapTile first, MapTile second, List<MapTile> path)
+        public Connection(Room first, Room second, List<MapTile> path)
         {
             First = first;
             Second = second;
@@ -40,15 +81,13 @@ namespace DunGen
     public class Graph
     {
         public List<Connection> Connections;
-        public List<MapTile> Nodes;
+        public List<Room> Nodes;
         public List<MapTile> AllCells;
-
-        public Color _color;
 
         public Graph()
         {
             Connections = new List<Connection>();
-            Nodes = new List<MapTile>();
+            Nodes = new List<Room>();
         }
 
         public void AddConnection(Connection connection)
@@ -61,22 +100,20 @@ namespace DunGen
                 Nodes.Add(connection.Second);
         }
 
-        public void CompileCells(Color color)
+        public void CompileCells()
         {
-            _color = color;
-
-            AllCells = new List<MapTile>(Nodes);
+            AllCells = new List<MapTile>();
+            foreach(var room in Nodes)
+            {
+                AllCells.AddRange(room.Tiles);
+            }
 
             foreach (var connection in Connections)
             {
-                connection.First.ColorTile(color);
-                connection.Second.ColorTile(color);
-
-                foreach (var cell in connection.Path) // TODO: Sometimes no path could be found, need to check for this when creating the path and then try a new node if no path was created
+                foreach (var cell in connection.Path)
                 {
                     if (!AllCells.Contains(cell))
                     {
-                        cell.ColorTile(color);
                         AllCells.Add(cell);
                     }
                 }
@@ -106,6 +143,11 @@ namespace DunGen
         [SerializeField] GameObject _mapCellPrefab;
         [SerializeField] RectTransform _gridParent;
         List<MapTile> _map;
+        List<Room> _rooms;
+
+        List<MapTile> _availableTiles;
+
+        [SerializeField] PremadeTile[] _requiredTiles;
 
         MapTile _entrance;
         MapTile _exit;
@@ -113,21 +155,20 @@ namespace DunGen
         Pathfinding _pathfinding;
 
         int _width, _height;
+        int _nextRoomID;
 
         bool _isWaiting;
 
         void Start()
         {
             _map = new List<MapTile>();
+            _rooms = new List<Room>();
             _pathfinding = new Pathfinding();
             _isWaiting = true;
+            _nextRoomID = 0;
         }
 
-        //
-        // This generates the full map in a single step, for demo purposes we will want to split these up into steps to give the user
-        // a visual picture of how the map generation algorithm works
-        //
-        public MapData GenerateInstant(GenerationSettings settings)
+        void ClearMap()
         {
             if (_map != null)
             {
@@ -136,20 +177,50 @@ namespace DunGen
                     Destroy(cell.gameObject);
                 }
                 _map.Clear();
+                _rooms.Clear();
                 _pathfinding = new Pathfinding();
+                _nextRoomID = 0;
             }
+        }
 
+        //
+        // This generates the full map in a single step, for demo purposes we will want to split these up into steps to give the user
+        // a visual picture of how the map generation algorithm works
+        //
+        public MapData GenerateInstant(GenerationSettings settings)
+        {
+            // Clear existing map if one exists
+            ClearMap();
+
+            // Generate grid of empty cells based on setting dimensions
             PopulateBlankCells(settings.GridWidth, settings.GridHeight);
 
-            // Pick rooms
-            List<MapTile> primary = PickPrimaryRooms(settings.PrimaryRooms.Evaluate());
+            // Place required tiles (TODO: Pull these from settings)
+            GeneratePremadeRooms(_requiredTiles);
+
+            // Place primary rooms
+            GeneratePrimaryRooms(settings.PrimaryRooms.Evaluate());
+
+            // Merge adjacent rooms together
+            MergeAdjacentRooms();
+
+            // Update tiles proximally
             UpdateTiles();
 
+            
             // Connect nodes and graphs
-            List<Connection> connections = ConnectNodes(primary);
-            List<Graph> graphs = FindDisconnectedGraphs(connections);
+            List<Connection> connections = ConnectRooms();
+
+            // Update tiles proximally
             UpdateTiles();
+
+            // Create list of disconnected groups of connected rooms
+            List<Graph> graphs = FindDisconnectedGraphs(connections);
+
+            // Connect all graphs to each other
             ConnectGraphs(graphs);
+
+            // Update tiles based on connectivity
             foreach (var tile in _map)
             {
                 tile.ConnectToOccupiedNeighbors(_map, _width, _height);
@@ -217,133 +288,6 @@ namespace DunGen
             return new MapData(_map, _entrance, ECardinal.N, _width, _height);
         }
 
-
-        //
-        // This was a slapped together coroutine that I used when building the algorithm the first time,
-        // TODO: make a cleaner version of this to be used by the demo tool
-        //
-        IEnumerator ConstructMap()
-        {
-            PopulateBlankCells(36, 20);
-
-            while (_isWaiting)
-            {
-                yield return null;
-            }
-            _isWaiting = true;
-
-            List<MapTile> primary = PickPrimaryRooms(30);
-            UpdateTiles();
-
-            while (_isWaiting)
-            {
-                yield return null;
-            }
-            _isWaiting = true;
-
-            List<Connection> connections = ConnectNodes(primary);
-            List<Graph> graphs = FindDisconnectedGraphs(connections);
-            UpdateTiles();
-
-            while (_isWaiting)
-            {
-                yield return null;
-            }
-            _isWaiting = true;
-
-            ConnectGraphs(graphs);
-
-            foreach (var tile in _map)
-            {
-                tile.ConnectToOccupiedNeighbors(_map, _width, _height);
-            }
-
-            foreach (var tile in _map)
-            {
-                tile.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
-            }
-
-            while (_isWaiting)
-            {
-                yield return null;
-            }
-            _isWaiting = true;
-
-            List<MapTile> Edges = GetBranchableEdges();
-
-            int branchCount = 10;
-
-            Edges.Shuffle();
-            while (Edges.Count > 0)
-            {
-                bool success = CreateBranch(Edges[0], EBranchType.Shoot);
-
-                if (success)
-                {
-                    branchCount--;
-                    if (branchCount <= 0)
-                        break;
-                }
-
-                Edges.RemoveAt(0);
-            }
-
-            while (_isWaiting)
-            {
-                yield return null;
-            }
-            _isWaiting = true;
-
-            List<MapTile> endPieces = _map.FindAll(x => DungeonTileData.EndPieces.Contains(x.TileID));
-            endPieces.Shuffle();
-
-            _entrance = endPieces[0];
-            _exit = endPieces[1];
-
-            endPieces[0].SetAsDoor(false);
-            endPieces[1].SetAsDoor(true);
-
-            while (_isWaiting)
-            {
-                yield return null;
-            }
-            _isWaiting = true;
-        }
-
-        ECardinal GetCardinal(int xDiff, int yDiff)
-        {
-            if (xDiff == 0)
-            {
-                if (yDiff > 0)
-                    return ECardinal.N;
-                else
-                    return ECardinal.S;
-            }
-            else if (xDiff > 0)
-            {
-                return ECardinal.W;
-            }
-            else
-            {
-                return ECardinal.E;
-            }
-        }
-
-        ECardinal RotateCardinal(ECardinal direction, bool isClockwise)
-        {
-            if (isClockwise)
-            {
-                return (ECardinal)(((int)direction + 1) % 4);
-            }
-
-            return (ECardinal)(((int)direction + 3) % 4);
-        }
-
-        ECardinal FlipCardinal(ECardinal direction)
-        {
-            return (ECardinal)(((int)direction + 2) % 4);
-        }
-
         void PopulateBlankCells(int width, int height)
         {
             GridLayoutGroup layout = _gridParent.GetComponent<GridLayoutGroup>();
@@ -362,85 +306,229 @@ namespace DunGen
                 cell.UpdateCellType(ECellType.Unoccupied);
                 _map.Add(cell);
 
-                cell.SetPosition(i % _width, i / _width);
+                cell.Init(i % _width, i / _width);
 
                 go.transform.parent = _gridParent;
             }
 
             _pathfinding.CreateNetwork(_width, _height, _map);
+            _availableTiles = new List<MapTile>(_map);
         }
 
-        List<MapTile> PickPrimaryRooms(int rooms)
+        bool IsAreaUnoccupied(int width, int height, MapTile startingTile, out List<MapTile> area)
         {
-            // Pick random squares to act as primary rooms
-            List<MapTile> options = new List<MapTile>(_map);
-            List<MapTile> primary = new List<MapTile>();
-            for (int i = 0; i < rooms; i++)
+            area = new List<MapTile>();
+
+            for (int i = 0; i < width; i++)
             {
-                int rand = Random.Range(0, options.Count);
-
-                MapTile option = options[rand];
-                option.UpdateCellType(ECellType.PrimaryRoom);
-                primary.Add(option);
-                options.RemoveAt(rand);
-
-                int useBorder = Random.Range(0, 2);
-                if (useBorder == 0)
+                for (int j = 0; j < height; j++)
                 {
-                    List<MapTile> adjacentCells = new List<MapTile>();
-                    for (int j = 0; j < _map.Count; j++)
+                    int index = startingTile.X + i + (startingTile.Y + j) * _width;
+                    //Debug.Log(startingTile.X + " " + startingTile.Y + " : " + index);
+                    if (!_map[index].IsAvailable)
                     {
-                        MapTile other = _map[j];
-                        if (Mathf.Abs(other.X - option.X) <= 1 && Mathf.Abs(other.Y - option.Y) <= 1)
-                        {
-                            if (other.X != option.X || other.Y != option.Y)
-                            {
-                                other.UpdateCellType(ECellType.Border);
-                                adjacentCells.Add(other);
-                            }
-                        }
+                        return false;
                     }
 
-                    foreach (var cell in adjacentCells)
+                    area.Add(_map[index]);
+                }
+            }
+            return true;
+        }
+
+        void GeneratePremadeRooms(PremadeTile[] tiles)
+        {
+            foreach(var tile in tiles)
+            {
+                List<MapTile> options = new List<MapTile>(_availableTiles);
+                options.Shuffle();
+
+                while (options.Count > 0)
+                {
+                    MapTile option = options[0];
+                    options.RemoveAt(0);
+
+                    // Only bother looking at tiles that start and end at least 2 cells away from the edge of the grid
+                    if(option.X >= 2 && option.Y >= 2 && option.X + tile.Width < _width - 2 && option.Y + tile.Height < _height - 2)
                     {
-                        options.Remove(cell);
+                        List<MapTile> placementArea;
+                        if(IsAreaUnoccupied(tile.Width, tile.Height, option, out placementArea))
+                        {
+                            foreach (var placedTile in placementArea)
+                                options.Remove(placedTile);
+
+                            PlacePremadeRoom(tile, placementArea);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        void PlacePremadeRoom(PremadeTile tile, List<MapTile> area)
+        {
+            int[] ids = tile.GetGridIDs();
+            for(int i=0; i<area.Count; i++)
+            {
+                MapTile next = area[i];
+                next.UpdateTileID(ids[i]);
+                if(ids[i] >= 0)
+                {
+                    next.UpdateCellType(ECellType.PremadeRoom);
+                    next.UpdateRoomID(_nextRoomID);
+                    _availableTiles.Remove(next);
+                }
+            }
+
+            _rooms.Add(new Room(area, _nextRoomID, true));
+            _nextRoomID++;
+        }
+
+        void GeneratePrimaryRooms(int rooms)
+        {
+            // Pick random squares to act as primary rooms
+            List<MapTile> options = new List<MapTile>(_availableTiles);
+            options.Shuffle();
+
+            List<List<MapTile>> primaryRooms = new List<List<MapTile>>();
+            for (int i = 0; i < rooms; i++)
+            {
+                MapTile option = options[0];
+                options.RemoveAt(0);
+
+                int roomWidth = Random.Range(2, 4);
+                int roomHeight = Random.Range(2, 4);
+
+                if (roomWidth > _width - option.X)
+                    roomWidth = _width - option.X;
+                if (roomHeight > _height - option.Y)
+                    roomHeight = _height - option.Y;
+
+                if (roomWidth < 2 || roomHeight < 2)
+                    continue;
+
+                List<MapTile> placementArea;
+                if(IsAreaUnoccupied(roomWidth, roomHeight, option, out placementArea))
+                {
+                    primaryRooms.Add(placementArea);
+                    PlacePrimaryRoom(placementArea);
+                }
+            }
+        }
+
+        void PlacePrimaryRoom(List<MapTile> area)
+        {
+            foreach(var tile in area)
+            {
+                tile.UpdateCellType(ECellType.PrimaryRoom);
+                tile.UpdateRoomID(_nextRoomID);
+                _availableTiles.Remove(tile);
+            }
+
+            _rooms.Add(new Room(area, _nextRoomID));
+            _nextRoomID++;
+        }
+
+        void MergeAdjacentRooms()
+        {
+            List<Room> unmerged = new List<Room>(_rooms);
+            List<Room> completedRooms = new List<Room>();
+            while(unmerged.Count > 0)
+            {
+                Room currentRoom = unmerged[0];
+                unmerged.RemoveAt(0);
+
+                Room roomToMerge = null;
+                foreach (var testRoom in unmerged)
+                {
+                    if(currentRoom.MaxX + 1 < testRoom.MinX
+                        || currentRoom.MinX > testRoom.MaxX + 1
+                        || currentRoom.MaxY + 1 < testRoom.MinY
+                        || currentRoom.MinY > testRoom.MaxY + 1)
+                    {
+                        continue;
+                    }
+
+                    if(AreRoomsAdjacent(currentRoom, testRoom))
+                    {
+                        roomToMerge = testRoom;
+                        break;
+                    }
+                }
+
+                if(roomToMerge != null)
+                {
+                    unmerged.Remove(roomToMerge);
+                    List<MapTile> allTiles = new List<MapTile>(currentRoom.Tiles);
+                    allTiles.AddRange(roomToMerge.Tiles);
+                    Room room = new Room(allTiles, currentRoom.RoomID);
+                    unmerged.Add(room);
+                }
+                else
+                {
+                    completedRooms.Add(currentRoom);
+                }
+            }
+            _rooms = completedRooms;
+        }
+
+        bool AreRoomsAdjacent(Room first, Room second)
+        {
+            foreach(var tile in first.Tiles)
+            {
+                foreach(var other in second.Tiles)
+                {
+                    int xDiff = Mathf.Abs(tile.X - other.X);
+                    int yDiff = Mathf.Abs(tile.Y - other.Y);
+
+                    if (xDiff + yDiff < 2)
+                    {
+                        return true;
                     }
                 }
             }
 
-            return primary;
+            return false;
         }
 
-        public List<Connection> ConnectNodes(List<MapTile> primary)
+        public List<Connection> ConnectRooms()
         {
-            List<MapTile> failedPaths = new List<MapTile>();
-
             // Create list of directly connected nodes
             List<Connection> connections = new List<Connection>();
-            List<MapTile> unused = new List<MapTile>(primary);
+
+            List<Room> rooms = new List<Room>();
+            foreach (var room in _rooms)
+            {
+                // TODO deal with premade rooms
+                if (!room.IsPremade)
+                {
+                    rooms.Add(room);
+                }
+            }
+
+            List<Room> unused = new List<Room>(rooms);
             while (unused.Count > 0)
             {
-                MapTile next = unused[0];
-                unused.Remove(next);
+                Room next = unused[0];
+                unused.RemoveAt(0);
 
-                MapTile nearest = _pathfinding.FindNearestNode(next, primary);
+                Room nearest = _pathfinding.FindNearestNode(next, rooms);
+                List<MapTile> path = _pathfinding.FindPath(next.GetAnchorTile(), nearest.GetAnchorTile());
 
-                List<MapTile> path = _pathfinding.FindPath(next, nearest);
-
-                if(path == null)
+                if (unused.Contains(nearest))
                 {
-                    Debug.Log("Failed to create path to nearest node");
-                    failedPaths.Add(next);
+                    unused.Remove(nearest);
                 }
-                else
+
+                foreach(var tile in path)
                 {
-                    if (unused.Contains(nearest))
+                    if(tile.CellType == ECellType.Unoccupied)
                     {
-                        unused.Remove(nearest);
+                        tile.UpdateCellType(ECellType.Hallway);
                     }
-
-                    connections.Add(new Connection(next, nearest, path));
                 }
+
+                connections.Add(new Connection(next, nearest, path));
             }
             return connections;
         }
@@ -478,7 +566,7 @@ namespace DunGen
             List<Graph> updatedGraphs = new List<Graph>(graphs);
             foreach (var graph in updatedGraphs)
             {
-                graph.CompileCells(Color.white);
+                graph.CompileCells();
             }
 
             return updatedGraphs;
@@ -486,31 +574,31 @@ namespace DunGen
 
         public void ConnectGraphs(List<Graph> updatedGraphs)
         {
+            // Count to prevent infinite loops in case of error
             int count = 0;
             while (updatedGraphs.Count > 1 && count < 100)
             {
                 count++;
-                //Debug.Log("Number of graphs = " + updatedGraphs.Count);
 
                 Graph first = updatedGraphs[0];
                 updatedGraphs.Remove(first);
 
                 Graph nearest = null;
-                MapTile bestFirst = null;
-                MapTile bestSecond = null;
+                Room bestFirst = null;
+                Room bestSecond = null;
                 float bestDist = float.MaxValue;
                 foreach (var graph in updatedGraphs)
                 {
-                    foreach (var square in first.AllCells)
+                    foreach (var room in first.Nodes)
                     {
-                        foreach (var other in graph.AllCells)
+                        foreach (var other in graph.Nodes)
                         {
-                            float distance = _pathfinding.EvaluateH(square, other);
+                            float distance = _pathfinding.EvaluateH(room.GetAnchorTile(), other.GetAnchorTile());
                             if (distance < bestDist)
                             {
                                 bestDist = distance;
                                 nearest = graph;
-                                bestFirst = square;
+                                bestFirst = room;
                                 bestSecond = other;
                             }
                         }
@@ -524,26 +612,26 @@ namespace DunGen
 
                 foreach (var graph in updatedGraphs)
                 {
-                    if (updatedGraphs.Count == 1)
-                    {
-                        graph.CompileCells(Color.white);
-                    }
-                    else
-                    {
-                        graph.CompileCells(graph._color);
-                    }
+                    graph.CompileCells();
                 }
             }
         }
 
-        Graph MergeGraphs(Graph first, MapTile firstNode, Graph second, MapTile secondNode)
+        Graph MergeGraphs(Graph first, Room firstNode, Graph second, Room secondNode)
         {
-            List<MapTile> path = _pathfinding.FindPath(firstNode, secondNode);
+            List<MapTile> path = _pathfinding.FindPath(firstNode.GetAnchorTile(), secondNode.GetAnchorTile());
+
+            foreach (var tile in path)
+            {
+                if (tile.CellType == ECellType.Unoccupied)
+                {
+                    tile.UpdateCellType(ECellType.Hallway);
+                }
+            }
 
             Connection merger = new Connection(firstNode, secondNode, path);
 
             Graph newGraph = new Graph();
-            newGraph._color = first._color;
             newGraph.AddConnection(merger);
             foreach (var connection in first.Connections)
             {
@@ -603,7 +691,7 @@ namespace DunGen
             int xDiff = current.X - neighbor.X;
             int yDiff = current.Y - neighbor.Y;
 
-            ECardinal direction = GetCardinal(xDiff, yDiff);
+            ECardinal direction = Cardinals.FromCoordinateDifference(xDiff, yDiff);
 
             while (neighbor != null && stepCount > 0)
             {
@@ -611,7 +699,7 @@ namespace DunGen
 
                 current.ConnectCardinally(direction);
                 current.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
-                neighbor.ConnectCardinally(FlipCardinal(direction));
+                neighbor.ConnectCardinally(Cardinals.Flip(direction));
                 neighbor.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
 
                 current = neighbor;
@@ -639,13 +727,13 @@ namespace DunGen
                 int xDiff = current.X - neighbor.X;
                 int yDiff = current.Y - neighbor.Y;
 
-                ECardinal direction = GetCardinal(xDiff, yDiff);
+                ECardinal direction = Cardinals.FromCoordinateDifference(xDiff, yDiff);
 
                 neighbor.UpdateCellType(ECellType.Hallway);
 
                 current.ConnectCardinally(direction);
                 current.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
-                neighbor.ConnectCardinally(FlipCardinal(direction));
+                neighbor.ConnectCardinally(Cardinals.Flip(direction));
                 neighbor.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
 
                 current = neighbor;
@@ -669,7 +757,7 @@ namespace DunGen
             int xDiff = current.X - neighbor.X;
             int yDiff = current.Y - neighbor.Y;
 
-            ECardinal direction = GetCardinal(xDiff, yDiff);
+            ECardinal direction = Cardinals.FromCoordinateDifference(xDiff, yDiff);
             bool connected = false;
 
             while (neighbor != null)
@@ -681,7 +769,7 @@ namespace DunGen
 
                 current.ConnectCardinally(direction);
                 current.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
-                neighbor.ConnectCardinally(FlipCardinal(direction));
+                neighbor.ConnectCardinally(Cardinals.Flip(direction));
                 neighbor.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
 
                 if (connected)
@@ -717,7 +805,7 @@ namespace DunGen
             int xDiff = current.X - neighbor.X;
             int yDiff = current.Y - neighbor.Y;
 
-            ECardinal direction = GetCardinal(xDiff, yDiff);
+            ECardinal direction = Cardinals.FromCoordinateDifference(xDiff, yDiff);
             bool connected = false;
 
             bool clockwise = Random.Range(0, 2) == 0;
@@ -730,14 +818,14 @@ namespace DunGen
                 }
 
                 current.ConnectCardinally(direction);
-                neighbor.ConnectCardinally(FlipCardinal(direction));
+                neighbor.ConnectCardinally(Cardinals.Flip(direction));
 
                 if (connected)
                     break;
 
                 if (Random.Range(0, 4) == 0)
                 {
-                    direction = RotateCardinal(direction, clockwise);
+                    direction = Cardinals.Rotate(direction, clockwise);
                 }
 
                 current = neighbor;
