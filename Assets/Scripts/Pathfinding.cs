@@ -100,9 +100,19 @@ namespace DunGen
                 Open.Remove(current);
                 Closed.Add(current);
 
+                if (current.Square.CellType == ECellType.Invalid)
+                {
+                    continue;
+                }
+
                 foreach (var neighbor in current.Adjacent)
                 {
                     if (Closed.Contains(neighbor))
+                    {
+                        continue;
+                    }
+
+                    if (neighbor.Square.CellType == ECellType.Invalid)
                     {
                         continue;
                     }

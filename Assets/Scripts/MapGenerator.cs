@@ -319,11 +319,11 @@ namespace DunGen
         {
             area = new List<MapTile>();
 
-            for (int i = 0; i < width; i++)
+            for (int i = 0; i < height; i++)
             {
-                for (int j = 0; j < height; j++)
+                for (int j = 0; j < width; j++)
                 {
-                    int index = startingTile.X + i + (startingTile.Y + j) * _width;
+                    int index = startingTile.X + j + (startingTile.Y + i) * _width;
                     //Debug.Log(startingTile.X + " " + startingTile.Y + " : " + index);
                     if (!_map[index].IsAvailable)
                     {
@@ -376,11 +376,24 @@ namespace DunGen
                 {
                     next.UpdateCellType(ECellType.PremadeRoom);
                     next.UpdateRoomID(_nextRoomID);
-                    _availableTiles.Remove(next);
+                }
+                _availableTiles.Remove(next);
+            }
+
+            for(int i = 0; i < tile.Width + 2; i++)
+            {
+                for(int j = 0; j<tile.Height + 2; j++)
+                {
+                    int index = area[0].X - 1 + i + (area[0].Y - 1 + j) * _width;
+                    if(i == 0 || i == tile.Width + 1 || j == 0 || j == tile.Height + 1)
+                    {
+                        _map[index].UpdateCellType(ECellType.Invalid);
+                        _availableTiles.Remove(_map[index]);
+                    }
                 }
             }
 
-            _rooms.Add(new Room(area, _nextRoomID, true));
+            //_rooms.Add(new Room(area, _nextRoomID, true));
             _nextRoomID++;
         }
 
@@ -432,6 +445,7 @@ namespace DunGen
         void MergeAdjacentRooms()
         {
             List<Room> unmerged = new List<Room>(_rooms);
+
             List<Room> completedRooms = new List<Room>();
             while(unmerged.Count > 0)
             {
@@ -656,7 +670,8 @@ namespace DunGen
         //
         List<MapTile> GetBranchableEdges()
         {
-            return _map.FindAll(x => DungeonTileData.WallPieces.Contains(x.TileID) || DungeonTileData.HallPieces.Contains(x.TileID) || DungeonTileData.TurnPieces.Contains(x.TileID));
+            return _map.FindAll(x => x.CellType != ECellType.PremadeRoom &&
+            (DungeonTileData.WallPieces.Contains(x.TileID) || DungeonTileData.HallPieces.Contains(x.TileID) || DungeonTileData.TurnPieces.Contains(x.TileID)));
         }
 
         bool CreateBranch(MapTile startingCell, EBranchType type)
@@ -778,7 +793,7 @@ namespace DunGen
                 current = neighbor;
                 neighbor = current.GetTileInDirection(_map, _width, _height, direction);
 
-                if (neighbor != null && neighbor.CellType != ECellType.Unoccupied)
+                if (current.CanConnectToTile(neighbor))
                 {
                     connected = true;
                 }
@@ -833,10 +848,17 @@ namespace DunGen
 
                 if (neighbor != null)
                 {
-                    toUpdate.Add(neighbor);
-                    if (neighbor.CellType != ECellType.Unoccupied)
+                    if (neighbor.CellType == ECellType.Invalid)
                     {
-                        connected = true;
+                        neighbor = null;
+                    }
+                    else
+                    {
+                        toUpdate.Add(neighbor);
+                        if (current.CanConnectToTile(neighbor))
+                        {
+                            connected = true;
+                        }
                     }
                 }
             }

@@ -72,7 +72,7 @@ namespace DunGen
         public void UpdateCellType(ECellType type)
         {
             _type = type;
-            BG.enabled = type != ECellType.Unoccupied;
+            BG.enabled = type != ECellType.Unoccupied && type != ECellType.Invalid;
             if(type != ECellType.Unoccupied)
             {
                 _isAvailable = false;
@@ -134,7 +134,7 @@ namespace DunGen
         //
         public void ConnectToOccupiedNeighbors(List<MapTile> grid, int width, int height)
         {
-            if (_type == ECellType.Unoccupied)
+            if (_type == ECellType.Unoccupied || _type == ECellType.Invalid || _type == ECellType.PremadeRoom)
                 return;
 
             _connections = new bool[4];
@@ -156,7 +156,7 @@ namespace DunGen
         //
         public void UpdateTileProximity(List<MapTile> grid, int width, int height)
         {
-            if (_type == ECellType.Unoccupied)
+            if (_type == ECellType.Unoccupied || _type == ECellType.PremadeRoom || _type == ECellType.Invalid)
                 return;
 
             int bitval = 0;
@@ -181,7 +181,7 @@ namespace DunGen
                     {
                         MapTile neighbor = grid[newX + newY * width];
 
-                        comp[k] = neighbor.CellType != ECellType.Unoccupied;
+                        comp[k] = neighbor.CellType != ECellType.Unoccupied && neighbor.CellType != ECellType.PremadeRoom && neighbor.CellType != ECellType.Invalid;
                     }
 
                     k++;
@@ -206,7 +206,7 @@ namespace DunGen
         //
         public void UpdateTileIDByConnectedNeighbors(List<MapTile> grid, int width, int height)
         {
-            if (_type == ECellType.Unoccupied)
+            if (_type == ECellType.Unoccupied || _type == ECellType.PremadeRoom || _type == ECellType.Invalid)
                 return;
 
             int bitval = 0;
@@ -319,7 +319,7 @@ namespace DunGen
         public static MapTile GetOccupiedCell(List<MapTile> grid, int x, int y, int width, int height)
         {
             MapTile neighbor = GetTileByPosition(grid, x, y, width, height);
-            if (neighbor == null || neighbor.CellType == ECellType.Unoccupied)
+            if (neighbor == null || neighbor.CellType == ECellType.Unoccupied || neighbor.CellType == ECellType.Invalid || neighbor.CellType == ECellType.PremadeRoom)
             {
                 return null;
             }
@@ -379,6 +379,11 @@ namespace DunGen
                 return cell;
 
             return null;
+        }
+
+        public bool CanConnectToTile(MapTile other)
+        {
+            return other != null && other.CellType != ECellType.Unoccupied && other.CellType != ECellType.Invalid;
         }
         #endregion
     }
