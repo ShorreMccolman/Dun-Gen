@@ -4,27 +4,27 @@ using UnityEngine;
 
 namespace DunGen
 {
-    public class PathNode
-    {
-        public MapTile Square;
-        public List<PathNode> Adjacent = new List<PathNode>();
-
-        public PathNode Parent;
-        public float g, h, f;
-
-        public PathNode(MapTile square)
-        {
-            Square = square;
-        }
-
-        public void AddAdjacent(PathNode square)
-        {
-            Adjacent.Add(square);
-        }
-    }
-
     public class Pathfinding
     {
+        public class PathNode
+        {
+            public MapTile Square;
+            public List<PathNode> Adjacent = new List<PathNode>();
+
+            public PathNode Parent;
+            public float g, h, f;
+
+            public PathNode(MapTile square)
+            {
+                Square = square;
+            }
+
+            public void AddAdjacent(PathNode square)
+            {
+                Adjacent.Add(square);
+            }
+        }
+
         List<PathNode> Grid;
 
         List<PathNode> Open;
@@ -100,19 +100,9 @@ namespace DunGen
                 Open.Remove(current);
                 Closed.Add(current);
 
-                if (current.Square.CellType == ECellType.Invalid)
-                {
-                    continue;
-                }
-
                 foreach (var neighbor in current.Adjacent)
                 {
                     if (Closed.Contains(neighbor))
-                    {
-                        continue;
-                    }
-
-                    if (neighbor.Square.CellType == ECellType.Invalid)
                     {
                         continue;
                     }
@@ -207,6 +197,11 @@ namespace DunGen
             }
 
             return path;
+        }
+
+        public void RemoveCellsFromGrid(List<MapTile> tiles)
+        {
+            Grid.RemoveAll(x => tiles.Contains(x.Square));
         }
     }
 }

@@ -10,7 +10,6 @@ namespace DunGen
         PrimaryRoom,
         PremadeRoom,
         Hallway,
-        Border,
         Door,
         Invalid
     }

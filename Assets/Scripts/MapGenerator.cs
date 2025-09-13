@@ -324,7 +324,6 @@ namespace DunGen
                 for (int j = 0; j < width; j++)
                 {
                     int index = startingTile.X + j + (startingTile.Y + i) * _width;
-                    //Debug.Log(startingTile.X + " " + startingTile.Y + " : " + index);
                     if (!_map[index].IsAvailable)
                     {
                         return false;
@@ -367,6 +366,8 @@ namespace DunGen
 
         void PlacePremadeRoom(PremadeTile tile, List<MapTile> area)
         {
+            List<MapTile> cellsToRemove = new List<MapTile>();
+
             int[] ids = tile.GetGridIDs();
             for(int i=0; i<area.Count; i++)
             {
@@ -378,6 +379,7 @@ namespace DunGen
                     next.UpdateRoomID(_nextRoomID);
                 }
                 _availableTiles.Remove(next);
+                cellsToRemove.Add(next);
             }
 
             for(int i = 0; i < tile.Width + 2; i++)
@@ -389,9 +391,11 @@ namespace DunGen
                     {
                         _map[index].UpdateCellType(ECellType.Invalid);
                         _availableTiles.Remove(_map[index]);
+                        cellsToRemove.Add(_map[index]);
                     }
                 }
             }
+            _pathfinding.RemoveCellsFromGrid(cellsToRemove);
 
             //_rooms.Add(new Room(area, _nextRoomID, true));
             _nextRoomID++;
@@ -769,34 +773,46 @@ namespace DunGen
                 return false;
             }
 
-            int xDiff = current.X - neighbor.X;
-            int yDiff = current.Y - neighbor.Y;
-
-            ECardinal direction = Cardinals.FromCoordinateDifference(xDiff, yDiff);
-            bool connected = false;
-
-            while (neighbor != null)
+            List<MapTile> bridgeTiles = new List<MapTile>() { current, neighbor };
+            ECardinal direction = Cardinals.FromCoordinateDifference(current.X - neighbor.X, current.Y - neighbor.Y);
+            
+            bool scanning = true;
+            while (scanning)
             {
-                if (!connected)
-                {
-                    neighbor.UpdateCellType(ECellType.Hallway);
-                }
-
-                current.ConnectCardinally(direction);
-                current.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
-                neighbor.ConnectCardinally(Cardinals.Flip(direction));
-                neighbor.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
-
-                if (connected)
-                    break;
-
                 current = neighbor;
                 neighbor = current.GetTileInDirection(_map, _width, _height, direction);
 
-                if (current.CanConnectToTile(neighbor))
+                if(neighbor == null || neighbor.CellType == ECellType.Invalid)
                 {
-                    connected = true;
+                    return false;
                 }
+                else if(neighbor.CellType == ECellType.Hallway || neighbor.CellType == ECellType.PrimaryRoom)
+                {
+                    scanning = false;
+                }
+
+                bridgeTiles.Add(neighbor);
+            }
+
+            for(int i=0;i<bridgeTiles.Count;i++)
+            {
+                if(i < bridgeTiles.Count - 1)
+                {
+                    bridgeTiles[i].ConnectCardinally(direction);
+                }
+                if(i > 0)
+                {
+                    bridgeTiles[i].ConnectCardinally(Cardinals.Flip(direction));
+                }
+                if(i < bridgeTiles.Count - 1 && i > 0)
+                {
+                    bridgeTiles[i].UpdateCellType(ECellType.Hallway);
+                }
+            }
+
+            foreach(var tile in bridgeTiles)
+            {
+                tile.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
             }
 
             return true;
