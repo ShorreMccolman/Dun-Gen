@@ -184,6 +184,34 @@ namespace DunGen
         }
 
         //
+        // Copy map data to this generator
+        // **I'm assuming atm that we don't need to run any of the generation on this map data so I'm not copying the pathfinding changes or other related changes
+        // **That suggest to me that we probably should seperate some logic out of this class but thats a TODO for now
+        //
+        public MapData CopyMapData(GenerationSettings settings, MapData data)
+        {
+            // Clear existing map if one exists
+            ClearMap();
+
+            // Generate grid of empty cells based on setting dimensions
+            PopulateBlankCells(settings.GridWidth, settings.GridHeight);
+
+            CopyTilesFromData(data);
+
+            _entrance = _map[data.Entrance.X + settings.GridWidth * data.Entrance.Y];
+
+            return new MapData(_map, _entrance, data.StartingDirection, _width, _height);
+        }
+
+        void CopyTilesFromData(MapData data)
+        {
+            for (int i = 0; i < _map.Count; i++)
+            {
+                _map[i].CopyTile(data.Map[i]);
+            }
+        }
+
+        //
         // This generates the full map in a single step, for demo purposes we will want to split these up into steps to give the user
         // a visual picture of how the map generation algorithm works
         //

@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using UnityEngine.UI.Extensions;
 using TMPro;
 using UnityEditor;
+using DunGen;
 
 public class DemoSettingsMenu : DoneGenMenu
 {
@@ -20,9 +21,14 @@ public class DemoSettingsMenu : DoneGenMenu
     [SerializeField] Toggle Bridge;
     [SerializeField] Toggle Crank;
 
-    [SerializeField] DunGen.MapGenerator Generator;
+    [SerializeField] Button LaunchFromPreviewButton;
+
+    [SerializeField] MapGenerator Generator;
 
     GenerationSettings _defaults;
+
+    MapData _previewData;
+    GenerationSettings _previewSettings;
 
     protected override void Init()
     {
@@ -40,6 +46,7 @@ public class DemoSettingsMenu : DoneGenMenu
 
     protected override void OnOpen()
     {
+        LaunchFromPreviewButton.enabled = false;
         RestoreDefaults();
     }
 
@@ -51,35 +58,19 @@ public class DemoSettingsMenu : DoneGenMenu
         RoomCount.LowValue = _defaults.PrimaryRooms.Min;
         RoomCount.HighValue = _defaults.PrimaryRooms.Max;
 
-        List<DunGen.EBranchType> types = new List<DunGen.EBranchType>(_defaults.BranchTypes);
-        Shoot.isOn = types.Contains(DunGen.EBranchType.Shoot);
-        Snake.isOn = types.Contains(DunGen.EBranchType.Snake);
-        Bridge.isOn = types.Contains(DunGen.EBranchType.Bridge);
-        Crank.isOn = types.Contains(DunGen.EBranchType.Crank);
+        List<EBranchType> types = new List<EBranchType>(_defaults.BranchTypes);
+        Shoot.isOn = types.Contains(EBranchType.Shoot);
+        Snake.isOn = types.Contains(EBranchType.Snake);
+        Bridge.isOn = types.Contains(EBranchType.Bridge);
+        Crank.isOn = types.Contains(EBranchType.Crank);
     }
 
-    public void PreviewCurrentSettings()
+    public void PreviewCurrentSettingsPressed()
     {
-        List<DunGen.EBranchType> branchTypes = new List<DunGen.EBranchType>();
-        if (Shoot.isOn)
-            branchTypes.Add(DunGen.EBranchType.Shoot);
-        if (Snake.isOn)
-            branchTypes.Add(DunGen.EBranchType.Snake);
-        if (Bridge.isOn)
-            branchTypes.Add(DunGen.EBranchType.Bridge);
-        if (Crank.isOn)
-            branchTypes.Add(DunGen.EBranchType.Crank);
+        _previewSettings = GetSettingsFromControls();
+        _previewData = Generator.GenerateInstant(_previewSettings);
 
-        GenerationSettings settings = new GenerationSettings()
-        {
-            GameStyle = (EGameStyle)DungeonStyle.value,
-            GridWidth = int.Parse(XDimension.text),
-            GridHeight = int.Parse(YDimension.text),
-            PrimaryRooms = new ValueRange((int)RoomCount.LowValue, (int)RoomCount.HighValue),
-            BranchTypes = branchTypes.ToArray()
-        };
-
-        DunGen.MapData mapData = Generator.GenerateInstant(settings);
+        LaunchFromPreviewButton.enabled = true;
     }
 
     public void SaveCurrentSettings()
@@ -96,15 +87,29 @@ public class DemoSettingsMenu : DoneGenMenu
     void SaveAs(string fileName)
     {
 #if UNITY_EDITOR
-        List<DunGen.EBranchType> branchTypes = new List<DunGen.EBranchType>();
+        GenerationSettings settings = GetSettingsFromControls();
+
+        DoneGenSettingsData data = ScriptableObject.CreateInstance<DoneGenSettingsData>();
+        data.SettingsName = fileName;
+        data.Settings = settings;
+
+        AssetDatabase.CreateAsset(data, "Assets/Resources/Settings/" + fileName + ".asset");
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+#endif
+    }
+
+    GenerationSettings GetSettingsFromControls()
+    {
+        List<EBranchType> branchTypes = new List<EBranchType>();
         if (Shoot.isOn)
-            branchTypes.Add(DunGen.EBranchType.Shoot);
+            branchTypes.Add(EBranchType.Shoot);
         if (Snake.isOn)
-            branchTypes.Add(DunGen.EBranchType.Snake);
+            branchTypes.Add(EBranchType.Snake);
         if (Bridge.isOn)
-            branchTypes.Add(DunGen.EBranchType.Bridge);
+            branchTypes.Add(EBranchType.Bridge);
         if (Crank.isOn)
-            branchTypes.Add(DunGen.EBranchType.Crank);
+            branchTypes.Add(EBranchType.Crank);
 
         GenerationSettings settings = new GenerationSettings()
         {
@@ -115,13 +120,18 @@ public class DemoSettingsMenu : DoneGenMenu
             BranchTypes = branchTypes.ToArray()
         };
 
-        DoneGenSettingsData data = ScriptableObject.CreateInstance<DoneGenSettingsData>();
-        data.SettingsName = fileName;
-        data.Settings = settings;
+        return settings;
+    }
 
-        AssetDatabase.CreateAsset(data, "Assets/Resources/Settings/" + fileName + ".asset");
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-#endif
+    public void LaunchFromSettingsPressed()
+    {
+        DungeonBuilder.Instance.BuildAndLaunch(GetSettingsFromControls());
+        Close();
+    }
+
+    public void LaunchFromPreviewPressed()
+    {
+        DungeonBuilder.Instance.CopyBuildAndLaunch(_previewSettings, _previewData);
+        Close();
     }
 }

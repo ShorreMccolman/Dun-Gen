@@ -65,6 +65,19 @@ namespace DunGen
             _isPremade = false;
         }
 
+        public void CopyTile(MapTile tile)
+        {
+            _x = tile.X;
+            _y = tile.Y;
+            gameObject.name = _x + "," + _y;
+            _connections = tile._connections;
+            _isAvailable = tile.IsAvailable;
+            _isPremade = tile.IsPremade;
+            UpdateCellType(tile.CellType);
+            UpdateRoomID(tile.RoomID);
+            UpdateTileID(tile.TileID);
+        }
+
         //
         // Cell type determines properties of the cell when spawning the rooms in 3D
         //
@@ -92,7 +105,10 @@ namespace DunGen
         public void UpdateTileID(int id)
         {
             _tileID = id;
-            UpdateSprite(SpriteHandler.FetchSprite("Grid/Wall_" + id));
+            if (id >= 0)
+            {
+                UpdateSprite(SpriteHandler.FetchSprite("Grid/Wall_" + id));
+            }
         }
 
         //

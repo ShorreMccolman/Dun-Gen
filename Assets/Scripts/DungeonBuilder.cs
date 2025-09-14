@@ -53,6 +53,20 @@ namespace DunGen
         {
             MapData mapData = _generator.GenerateInstant(settings);
 
+            LaunchBuild(mapData);
+        }
+
+        public void CopyBuildAndLaunch(GenerationSettings settings, MapData copyData)
+        {
+            MapData mapData = _generator.CopyMapData(settings, copyData);
+            LaunchBuild(mapData);
+        }
+
+        //
+        //
+        //
+        void LaunchBuild(MapData mapData)
+        {
             SpawnDungeonTiles(mapData);
             IDGPlayerController player = SpawnPlayer(mapData.Entrance, mapData.StartingDirection);
 
@@ -89,7 +103,7 @@ namespace DunGen
 
             foreach (var square in data.Map)
             {
-                if (square.CellType != ECellType.Unoccupied && !square.IsPremade)
+                if (square.CellType != ECellType.Unoccupied && square.CellType != ECellType.Invalid && !square.IsPremade)
                 {
                     GameObject go = Instantiate(TileSet.GetTile(square.TileID), transform);
                     go.transform.SetPositionAndRotation(new Vector3(square.X, 0, -square.Y), Quaternion.identity);
