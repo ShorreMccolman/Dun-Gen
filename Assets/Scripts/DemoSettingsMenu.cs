@@ -9,7 +9,8 @@ using DunGen;
 
 public class DemoSettingsMenu : DoneGenMenu
 {
-    [SerializeField] TMP_Dropdown DungeonStyle;
+    [SerializeField] TMP_Dropdown TileSetOptions;
+    [SerializeField] TMP_Dropdown DungeonStyleOptions;
 
     [SerializeField] TMP_InputField XDimension;
     [SerializeField] TMP_InputField YDimension;
@@ -30,6 +31,8 @@ public class DemoSettingsMenu : DoneGenMenu
     MapData _previewData;
     GenerationSettings _previewSettings;
 
+    DungeonTileData[] _loadedTileSets;
+
     protected override void Init()
     {
         DoneGenSettingsData data = Resources.Load<DoneGenSettingsData>("Settings/Default");
@@ -42,6 +45,14 @@ public class DemoSettingsMenu : DoneGenMenu
         {
             _defaults = data.Settings;
         }
+
+        _loadedTileSets = Resources.LoadAll<DungeonTileData>("DungeonTiles");
+        List<TMP_Dropdown.OptionData> options = new List<TMP_Dropdown.OptionData>();
+        foreach(var tileSet in _loadedTileSets)
+        {
+            options.Add(new TMP_Dropdown.OptionData(tileSet.name));
+        }
+        TileSetOptions.options = options;
     }
 
     protected override void OnOpen()
@@ -52,7 +63,7 @@ public class DemoSettingsMenu : DoneGenMenu
 
     public void RestoreDefaults()
     {
-        DungeonStyle.value = (int)_defaults.GameStyle;
+        DungeonStyleOptions.value = (int)_defaults.GameStyle;
         XDimension.text = _defaults.GridWidth.ToString();
         YDimension.text = _defaults.GridHeight.ToString();
         RoomCount.LowValue = _defaults.PrimaryRooms.Min;
@@ -113,11 +124,12 @@ public class DemoSettingsMenu : DoneGenMenu
 
         GenerationSettings settings = new GenerationSettings()
         {
-            GameStyle = (EGameStyle)DungeonStyle.value,
+            GameStyle = (EGameStyle)DungeonStyleOptions.value,
             GridWidth = int.Parse(XDimension.text),
             GridHeight = int.Parse(YDimension.text),
             PrimaryRooms = new ValueRange((int)RoomCount.LowValue, (int)RoomCount.HighValue),
-            BranchTypes = branchTypes.ToArray()
+            BranchTypes = branchTypes.ToArray(),
+            TileSet = _loadedTileSets[TileSetOptions.value]
         };
 
         return settings;

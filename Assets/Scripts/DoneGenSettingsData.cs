@@ -32,8 +32,8 @@ public struct GenerationSettings
     public EGameStyle GameStyle;
     public int GridWidth, GridHeight;
     public ValueRange PrimaryRooms;
-
     public DunGen.EBranchType[] BranchTypes;
+    public DungeonTileData TileSet;
 
     public bool CanBranch => BranchTypes != null && BranchTypes.Length > 0;
 

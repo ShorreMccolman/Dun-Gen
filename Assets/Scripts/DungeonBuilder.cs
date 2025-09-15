@@ -36,7 +36,7 @@ namespace DunGen
         private void Awake() { _instance = this; }
 
         [SerializeField] GameObject PlayerObject;
-        [SerializeField] DungeonTileData TileSet;
+        [SerializeField] DungeonTileData FallbackTileSet;
         [SerializeField] GameMap GameMap;
 
         MapGenerator _generator;
@@ -53,21 +53,21 @@ namespace DunGen
         {
             MapData mapData = _generator.GenerateInstant(settings);
 
-            LaunchBuild(mapData);
+            LaunchBuild(settings.TileSet, mapData);
         }
 
         public void CopyBuildAndLaunch(GenerationSettings settings, MapData copyData)
         {
             MapData mapData = _generator.CopyMapData(settings, copyData);
-            LaunchBuild(mapData);
+            LaunchBuild(settings.TileSet, mapData);
         }
 
         //
         //
         //
-        void LaunchBuild(MapData mapData)
+        void LaunchBuild(DungeonTileData tileSet, MapData mapData)
         {
-            SpawnDungeonTiles(mapData);
+            SpawnDungeonTiles(tileSet, mapData);
             IDGPlayerController player = SpawnPlayer(mapData.Entrance, mapData.StartingDirection);
 
             GameMap.Initialize(player, mapData);
@@ -77,9 +77,14 @@ namespace DunGen
         // This spawns in our 3D dungeon matching the generated map tiles. Uses the chosen 3D tile set objects
         // TODO: Add the ability to set the tile set (not currently neccesary since we only have one tile set at the moment)
         //
-        public void SpawnDungeonTiles(MapData data)
+        public void SpawnDungeonTiles(DungeonTileData tileSet, MapData data)
         {
-            foreach(var premade in TileSet.PremadeTiles)
+            if(tileSet == null)
+            {
+                tileSet = FallbackTileSet;
+            }
+
+            foreach(var premade in tileSet.PremadeTiles)
             {
                 PremadeTile tile = premade.GetComponent<PremadeTile>();
                 int index = FindMatchingTileGroup(data, tile);
@@ -105,7 +110,7 @@ namespace DunGen
             {
                 if (square.CellType != ECellType.Unoccupied && square.CellType != ECellType.Invalid && !square.IsPremade)
                 {
-                    GameObject go = Instantiate(TileSet.GetTile(square.TileID), transform);
+                    GameObject go = Instantiate(tileSet.GetTile(square.TileID), transform);
                     go.transform.SetPositionAndRotation(new Vector3(square.X, 0, -square.Y), Quaternion.identity);
                 }
             }
