@@ -2,12 +2,12 @@
 Dun Gen is a procedural map generation tool with the intention to give other developers the ability to easily add randomly generated dungeons into their game.
 This is planned to be released on the Unity asset store but is fairly early in development.
 
+![DunGenGIF](https://github.com/user-attachments/assets/5c40f6fe-23a6-4b67-8734-b96a314db6e6)
+
 Dun gen uses a map generation algorithm I built from scratch to generate layouts using user customized settings.
 It then uses that map to spawn 3D dungeons using customizable tile sets for different types of games.
 I am still working out what features I will include in the initial release but the goal is to support a variety of game styles
 and to include 2-3 prebuilt tile sets as well as allowing developers to build their own.
-
-**Created this repo for portfolio purposes, main development is happening in a seperate private repo**
 
 ## A quick example
 First a 2D map is generated based on user defined settings
@@ -17,7 +17,7 @@ A 3D dungeon is spawned in matching the layout of the generated map
 <img width="875" height="449" alt="DunGen3-3d" src="https://github.com/user-attachments/assets/17cf0797-9193-42d6-abc0-16886c50cefb" />
 
 A player object is then spawned in the dungeon allowing exploration
-<img width="1007" height="567" alt="DunGen3-FP" src="https://github.com/user-attachments/assets/5f5e4134-f252-4d26-8a53-096fe444a39b" />
+<img width="984" height="554" alt="Screenshot 2025-09-15 030632" src="https://github.com/user-attachments/assets/3e98b639-3238-4996-9353-b16c92c0b480" />
 
 ## Description of the map generation algorithm
 To give a quick summary of the map generation algorithm I will describe it roughly in steps.
@@ -33,7 +33,6 @@ To give a quick summary of the map generation algorithm I will describe it rough
 6. At this point, to add variation we create a bunch of offshoot paths called branches that have different properties based on the branch type.
 7. Choose a tile to act as the dungeon entrance and another tile for the exit.
 
-I have ideas for how to add more variation to the dungeons but for now I will flesh out the rest of the features of the tool
-
-<img width="524" height="293" alt="DunGen1" src="https://github.com/user-attachments/assets/bf676333-4b34-4f29-a095-0c5e62f61198" />
-<img width="524" height="293" alt="DunGen2" src="https://github.com/user-attachments/assets/2c863059-cfc4-40da-8112-f2f47d42879a" />
+## Currently implemented featurees
+You can edit the settings in a runtime editor that saves directly to scriptable objects
+<img width="934" height="502" alt="Screenshot 2025-09-15 030610" src="https://github.com/user-attachments/assets/31d583d4-6660-42f8-a79c-f298e2e6d981" />
