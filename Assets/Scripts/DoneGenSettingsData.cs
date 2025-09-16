@@ -2,53 +2,56 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[System.Serializable]
-public struct ValueRange
+namespace DunGen
 {
-    public int Min;
-    public int Max;
-
-    public ValueRange(int min, int max)
+    [System.Serializable]
+    public struct ValueRange
     {
-        Min = min;
-        Max = max;
+        public int Min;
+        public int Max;
+
+        public ValueRange(int min, int max)
+        {
+            Min = min;
+            Max = max;
+        }
+
+        public int Evaluate()
+        {
+            return Random.Range(Min, Max + 1);
+        }
     }
 
-    public int Evaluate()
+    public enum EGameStyle
     {
-        return Random.Range(Min, Max + 1);
+        FirstPerson,
+        TopDown
     }
-}
 
-public enum EGameStyle
-{
-    FirstPerson,
-    TopDown
-}
-
-[System.Serializable]
-public struct GenerationSettings
-{
-    public EGameStyle GameStyle;
-    public int GridWidth, GridHeight;
-    public ValueRange PrimaryRooms;
-    public DunGen.EBranchType[] BranchTypes;
-    public DungeonTileData TileSet;
-
-    public bool CanBranch => BranchTypes != null && BranchTypes.Length > 0;
-
-    public DunGen.EBranchType GetRandomBranchType()
+    [System.Serializable]
+    public struct GenerationSettings
     {
-        if (BranchTypes == null || BranchTypes.Length == 0)
-            return DunGen.EBranchType.Count;
+        public EGameStyle GameStyle;
+        public int GridWidth, GridHeight;
+        public ValueRange PrimaryRooms;
+        public EBranchType[] BranchTypes;
+        public DungeonTileData TileSet;
 
-        return BranchTypes[Random.Range(0, BranchTypes.Length)];
+        public bool CanBranch => BranchTypes != null && BranchTypes.Length > 0;
+
+        public EBranchType GetRandomBranchType()
+        {
+            if (BranchTypes == null || BranchTypes.Length == 0)
+                return EBranchType.Count;
+
+            return BranchTypes[Random.Range(0, BranchTypes.Length)];
+        }
     }
-}
 
-[CreateAssetMenu(menuName = "DoneGen/Generation Settings")]
-public class DoneGenSettingsData : ScriptableObject
-{
-    [SerializeField] public string SettingsName;
-    [SerializeField] public GenerationSettings Settings;
+    [CreateAssetMenu(menuName = "DoneGen/Generation Settings")]
+    public class DoneGenSettingsData : ScriptableObject
+    {
+        [SerializeField] public string SettingsName;
+        [SerializeField] public GenerationSettings Settings;
+    }
 }
