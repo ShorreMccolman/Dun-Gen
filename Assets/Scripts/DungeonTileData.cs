@@ -179,7 +179,7 @@ namespace DunGen
             }
         }
 
-        public ECardinal GetExitDirectionForTileID(int tileID)
+        public static ECardinal GetExitDirectionForTileID(int tileID)
         {
             switch (tileID)
             {

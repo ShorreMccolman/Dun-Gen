@@ -4,6 +4,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
 
+//
+//  This is the primary class responsible for generating the actual map layout that will be used to spawn the dungeon
+//
+
 namespace DunGen
 {
     public enum EBranchType
@@ -232,15 +236,14 @@ namespace DunGen
             // Merge adjacent rooms together
             MergeAdjacentRooms();
 
-            // Update tiles proximally
-            UpdateTiles();
+            // Update tiles based on neighbors regardless of connectivity
+            UpdateTilesProximally();
 
-            
             // Connect nodes and graphs
             List<Connection> connections = ConnectRooms();
 
             // Update tiles proximally
-            UpdateTiles();
+            UpdateTilesProximally();
 
             // Create list of disconnected groups of connected rooms
             List<Graph> graphs = FindDisconnectedGraphs(connections);
@@ -249,69 +252,16 @@ namespace DunGen
             ConnectGraphs(graphs);
 
             // Update tiles based on connectivity
-            foreach (var tile in _map)
-            {
-                tile.ConnectToOccupiedNeighbors(_map, _width, _height);
-            }
-            foreach (var tile in _map)
-            {
-                tile.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
-            }
+            ConnectNeighborsAndUpdate();
 
-            List<MapTile> Edges = GetBranchableEdges();
+            // Get a list of edges that can be used for branching off of
+            List<MapTile> edges = GetBranchableEdges();
 
-            // Create branches
-            if (settings.CanBranch)
-            {
-                int branchCount = 10;
-                Edges.Shuffle();
-                while (Edges.Count > 0 && branchCount > 0)
-                {
-                    bool success = CreateBranch(Edges[0], settings.GetRandomBranchType());
-
-                    if (success)
-                    {
-                        branchCount--;
-                    }
-
-                    Edges.RemoveAt(0);
-                }
-            }
+            // Generate a set of branching hallways if settings call for any
+            GenerateBranches(edges, settings);
 
             // Create Entrance and Exit
-            List<MapTile> endPieces = _map.FindAll(x => DungeonTileData.EndPieces.Contains(x.TileID));
-            int doorsNeeded = 2 - endPieces.Count;
-            while (Edges.Count > 0)
-            {
-                bool success = CreateBranch(Edges[0], EBranchType.Shoot);
-
-                if (success)
-                {
-                    doorsNeeded--;
-                }
-
-                Edges.RemoveAt(0);
-
-                if(doorsNeeded <= 0)
-                {
-                    endPieces = _map.FindAll(x => DungeonTileData.EndPieces.Contains(x.TileID));
-                    break;
-                }
-            }
-            endPieces.Shuffle();
-
-            if (endPieces.Count < 2)
-            {
-                // This shouldn't be possible unless settings allowed for a exremely crowded dungeon which shouldn't be allowed so logging JIC
-                Debug.LogError("Cound not find end piece for entrance and or exit!!!");
-            }
-            else
-            {
-                _entrance = endPieces[0];
-                endPieces[0].SetAsDoor(false);
-                _exit = endPieces[1];
-                endPieces[1].SetAsDoor(true);
-            }
+            GeneratePortals(edges);
 
             return new MapData(_map, _entrance, ECardinal.N, _width, _height);
         }
@@ -394,6 +344,7 @@ namespace DunGen
 
         void PlacePremadeRoom(PremadeTile tile, List<MapTile> area)
         {
+            List<MapTile> exitTiles = new List<MapTile>();
             List<MapTile> cellsToRemove = new List<MapTile>();
 
             int[] ids = tile.GetGridIDs();
@@ -408,14 +359,38 @@ namespace DunGen
                 }
                 _availableTiles.Remove(next);
                 cellsToRemove.Add(next);
+
+                // It is safe to assume adjacent tiles will not wrap in the grid since premade rooms are not placed on the map edges
+                ECardinal exitDirection = DungeonTileData.GetExitDirectionForTileID(ids[i]);
+                int exitIndex;
+                switch (exitDirection)
+                {
+                    case ECardinal.N:
+                        exitIndex = next.X + (next.Y - 1) * _width;
+                        exitTiles.Add(_map[exitIndex]);
+                        break;
+                    case ECardinal.E:
+                        exitIndex = next.X + 1 + next.Y * _width;
+                        exitTiles.Add(_map[exitIndex]);
+                        break;
+                    case ECardinal.S:
+                        exitIndex = next.X + (next.Y + 1) * _width;
+                        exitTiles.Add(_map[exitIndex]);
+                        break;
+                    case ECardinal.W:
+                        exitIndex = next.X - 1 + next.Y * _width;
+                        exitTiles.Add(_map[exitIndex]);
+                        break;
+                }
             }
 
-            for(int i = 0; i < tile.Width + 2; i++)
+            // TODO: This doesn't work for rooms that exit within the area, so need to rethink this!!!
+            for (int i = 0; i < tile.Width + 2; i++)
             {
-                for(int j = 0; j<tile.Height + 2; j++)
+                for (int j = 0; j < tile.Height + 2; j++)
                 {
                     int index = area[0].X - 1 + i + (area[0].Y - 1 + j) * _width;
-                    if(i == 0 || i == tile.Width + 1 || j == 0 || j == tile.Height + 1)
+                    if (i == 0 || i == tile.Width + 1 || j == 0 || j == tile.Height + 1)
                     {
                         _map[index].UpdateCellType(ECellType.Invalid);
                         _availableTiles.Remove(_map[index]);
@@ -691,7 +666,77 @@ namespace DunGen
             return newGraph;
         }
 
-        void UpdateTiles()
+        void GenerateBranches(List<MapTile> edges, GenerationSettings settings)
+        {
+            // Create branches
+            if (settings.CanBranch)
+            {
+                int branchCount = 10;
+                edges.Shuffle();
+                while (edges.Count > 0 && branchCount > 0)
+                {
+                    bool success = CreateBranch(edges[0], settings.GetRandomBranchType());
+
+                    if (success)
+                    {
+                        branchCount--;
+                    }
+
+                    edges.RemoveAt(0);
+                }
+            }
+        }
+
+        void GeneratePortals(List<MapTile> edges)
+        {
+            List<MapTile> endPieces = _map.FindAll(x => DungeonTileData.EndPieces.Contains(x.TileID));
+            int doorsNeeded = 2 - endPieces.Count;
+            while (edges.Count > 0)
+            {
+                bool success = CreateBranch(edges[0], EBranchType.Shoot);
+
+                if (success)
+                {
+                    doorsNeeded--;
+                }
+
+                edges.RemoveAt(0);
+
+                if (doorsNeeded <= 0)
+                {
+                    endPieces = _map.FindAll(x => DungeonTileData.EndPieces.Contains(x.TileID));
+                    break;
+                }
+            }
+            endPieces.Shuffle();
+
+            if (endPieces.Count < 2)
+            {
+                // This shouldn't be possible unless settings allowed for a exremely crowded dungeon which shouldn't be allowed so logging JIC
+                Debug.LogError("Cound not find end piece for entrance and or exit!!!");
+            }
+            else
+            {
+                _entrance = endPieces[0];
+                endPieces[0].SetAsDoor(false);
+                _exit = endPieces[1];
+                endPieces[1].SetAsDoor(true);
+            }
+        }
+
+        void ConnectNeighborsAndUpdate()
+        {
+            foreach (var tile in _map)
+            {
+                tile.ConnectToOccupiedNeighbors(_map, _width, _height);
+            }
+            foreach (var tile in _map)
+            {
+                tile.UpdateTileIDByConnectedNeighbors(_map, _width, _height);
+            }
+        }
+
+        void UpdateTilesProximally()
         {
             foreach (var tile in _map)
                 tile.UpdateTileProximity(_map, _width, _height);
