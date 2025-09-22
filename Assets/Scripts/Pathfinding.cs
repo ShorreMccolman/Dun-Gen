@@ -14,6 +14,8 @@ namespace DunGen
             public PathNode Parent;
             public float g, h, f;
 
+            public bool IsBlackedOut;
+
             public PathNode(MapTile square)
             {
                 Square = square;
@@ -102,7 +104,7 @@ namespace DunGen
 
                 foreach (var neighbor in current.Adjacent)
                 {
-                    if (Closed.Contains(neighbor))
+                    if (Closed.Contains(neighbor) || neighbor.IsBlackedOut)
                     {
                         continue;
                     }
@@ -201,7 +203,11 @@ namespace DunGen
 
         public void RemoveCellsFromGrid(List<MapTile> tiles)
         {
-            Grid.RemoveAll(x => tiles.Contains(x.Square));
+            List<PathNode> removed = Grid.FindAll(x => tiles.Contains(x.Square));
+            foreach(var node in removed)
+            {
+                node.IsBlackedOut = true;
+            }
         }
     }
 }

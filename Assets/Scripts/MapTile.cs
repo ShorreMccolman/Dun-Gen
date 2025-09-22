@@ -335,7 +335,7 @@ namespace DunGen
         public static MapTile GetOccupiedCell(List<MapTile> grid, int x, int y, int width, int height)
         {
             MapTile neighbor = GetTileByPosition(grid, x, y, width, height);
-            if (neighbor == null || neighbor.CellType == ECellType.Unoccupied || neighbor.CellType == ECellType.Invalid || neighbor.CellType == ECellType.PremadeRoom)
+            if (neighbor == null || neighbor.CellType == ECellType.Unoccupied || neighbor.CellType == ECellType.Invalid)
             {
                 return null;
             }

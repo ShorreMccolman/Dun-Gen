@@ -11075,7 +11075,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _mapCellPrefab: {fileID: 3633057698829416166, guid: 16b5faafb613b1245bbc2c77f4d54d98, type: 3}
   _gridParent: {fileID: 45473775}
-  _requiredTiles: []
+  _requiredTiles:
+  - {fileID: 6200848067010915167, guid: f8042747101c29a40932fc66b4a7a978, type: 3}
 --- !u!1 &1957579491
 GameObject:
   m_ObjectHideFlags: 0

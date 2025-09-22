@@ -25,22 +25,48 @@ namespace DunGen
     public class Room
     {
         public List<MapTile> Tiles;
+        public List<MapTile> Exits;
         public int RoomID;
         public bool IsPremade;
 
         public int MinX, MaxX, MinY, MaxY;
 
-        public Room(List<MapTile> tiles, int id, bool isPremade = false)
+        public Room(List<MapTile> tiles, int id)
         {
             Tiles = tiles;
             RoomID = id;
-            IsPremade = isPremade;
+            Exits = new List<MapTile>();
+            IsPremade = false;
 
             MinX = tiles[0].X;
             MaxX = tiles[0].X;
             MinY = tiles[0].Y;
             MaxY = tiles[0].Y;
             foreach(var tile in tiles)
+            {
+                if (tile.X < MinX)
+                    MinX = tile.X;
+                if (tile.X > MaxX)
+                    MaxX = tile.X;
+                if (tile.Y < MinY)
+                    MinY = tile.Y;
+                if (tile.Y > MaxY)
+                    MaxY = tile.Y;
+            }
+        }
+
+        public Room(List<MapTile> tiles, List<MapTile> exits, int id)
+        {
+            Tiles = tiles;
+            Exits = exits;
+            RoomID = id;
+            IsPremade = true;
+
+            MinX = tiles[0].X;
+            MaxX = tiles[0].X;
+            MinY = tiles[0].Y;
+            MaxY = tiles[0].Y;
+            foreach (var tile in tiles)
             {
                 if (tile.X < MinX)
                     MinX = tile.X;
@@ -148,6 +174,7 @@ namespace DunGen
         [SerializeField] RectTransform _gridParent;
         List<MapTile> _map;
         List<Room> _rooms;
+        List<Room> _premadeRooms;
 
         List<MapTile> _availableTiles;
 
@@ -167,6 +194,7 @@ namespace DunGen
         {
             _map = new List<MapTile>();
             _rooms = new List<Room>();
+            _premadeRooms = new List<Room>();
             _pathfinding = new Pathfinding();
             _isWaiting = true;
             _nextRoomID = 0;
@@ -182,6 +210,7 @@ namespace DunGen
                 }
                 _map.Clear();
                 _rooms.Clear();
+                _premadeRooms.Clear();
                 _pathfinding = new Pathfinding();
                 _nextRoomID = 0;
             }
@@ -250,6 +279,9 @@ namespace DunGen
 
             // Connect all graphs to each other
             ConnectGraphs(graphs);
+
+            // Connect premade rooms to the rest of the graph
+            ConnectPremadeRooms(graphs);
 
             // Update tiles based on connectivity
             ConnectNeighborsAndUpdate();
@@ -368,18 +400,22 @@ namespace DunGen
                     case ECardinal.N:
                         exitIndex = next.X + (next.Y - 1) * _width;
                         exitTiles.Add(_map[exitIndex]);
+                        _map[exitIndex].ConnectCardinally(ECardinal.S);
                         break;
                     case ECardinal.E:
                         exitIndex = next.X + 1 + next.Y * _width;
                         exitTiles.Add(_map[exitIndex]);
+                        _map[exitIndex].ConnectCardinally(ECardinal.W);
                         break;
                     case ECardinal.S:
                         exitIndex = next.X + (next.Y + 1) * _width;
                         exitTiles.Add(_map[exitIndex]);
+                        _map[exitIndex].ConnectCardinally(ECardinal.N);
                         break;
                     case ECardinal.W:
                         exitIndex = next.X - 1 + next.Y * _width;
                         exitTiles.Add(_map[exitIndex]);
+                        _map[exitIndex].ConnectCardinally(ECardinal.E);
                         break;
                 }
             }
@@ -392,15 +428,19 @@ namespace DunGen
                     int index = area[0].X - 1 + i + (area[0].Y - 1 + j) * _width;
                     if (i == 0 || i == tile.Width + 1 || j == 0 || j == tile.Height + 1)
                     {
-                        _map[index].UpdateCellType(ECellType.Invalid);
-                        _availableTiles.Remove(_map[index]);
-                        cellsToRemove.Add(_map[index]);
+                        MapTile border = _map[index];
+                        if (!exitTiles.Contains(border))
+                        {
+                            _map[index].UpdateCellType(ECellType.Invalid);
+                            _availableTiles.Remove(_map[index]);
+                            cellsToRemove.Add(_map[index]);
+                        }
                     }
                 }
             }
             _pathfinding.RemoveCellsFromGrid(cellsToRemove);
 
-            //_rooms.Add(new Room(area, _nextRoomID, true));
+            _premadeRooms.Add(new Room(area, exitTiles, _nextRoomID));
             _nextRoomID++;
         }
 
@@ -517,23 +557,13 @@ namespace DunGen
             // Create list of directly connected nodes
             List<Connection> connections = new List<Connection>();
 
-            List<Room> rooms = new List<Room>();
-            foreach (var room in _rooms)
-            {
-                // TODO deal with premade rooms
-                if (!room.IsPremade)
-                {
-                    rooms.Add(room);
-                }
-            }
-
-            List<Room> unused = new List<Room>(rooms);
+            List<Room> unused = new List<Room>(_rooms);
             while (unused.Count > 0)
             {
                 Room next = unused[0];
                 unused.RemoveAt(0);
 
-                Room nearest = _pathfinding.FindNearestNode(next, rooms);
+                Room nearest = _pathfinding.FindNearestNode(next, _rooms);
                 List<MapTile> path = _pathfinding.FindPath(next.GetAnchorTile(), nearest.GetAnchorTile());
 
                 if (unused.Contains(nearest))
@@ -664,6 +694,35 @@ namespace DunGen
             }
 
             return newGraph;
+        }
+
+        void ConnectPremadeRooms(List<Graph> graph)
+        {
+            if(graph.Count != 1)
+            {
+                Debug.LogError("Graphs were not correctly merged before connecting premade rooms!");
+            }
+
+            foreach(var room in _premadeRooms)
+            {
+                List<Room> graphRooms = new List<Room>(graph[0].Nodes);
+                foreach (var tile in room.Exits)
+                {
+                    graphRooms.OrderBy(x => _pathfinding.EvaluateH(tile, x.GetAnchorTile()));
+
+                    List<MapTile> path = _pathfinding.FindPath(tile, graphRooms[0].GetAnchorTile());
+                    foreach (var pathTile in path)
+                    {
+                        if (pathTile.CellType == ECellType.Unoccupied)
+                        {
+                            pathTile.UpdateCellType(ECellType.Hallway);
+                        }
+                    }
+
+                    Connection connection = new Connection(room, graphRooms[0], path);
+                    graph[0].AddConnection(connection);
+                }
+            }
         }
 
         void GenerateBranches(List<MapTile> edges, GenerationSettings settings)
