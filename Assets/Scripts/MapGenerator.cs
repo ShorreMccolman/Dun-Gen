@@ -10,15 +10,6 @@ using System.Linq;
 
 namespace DunGen
 {
-    public enum EBranchType
-    {
-        Shoot,
-        Snake,
-        Bridge,
-        Crank,
-        Count
-    }
-
     public struct ExitTile
     {
         public MapTile Tile;
@@ -856,209 +847,24 @@ namespace DunGen
 
         bool CreateBranch(MapTile startingCell, EBranchType type)
         {
+            BranchGenerator generator;
             switch (type)
             {
                 case EBranchType.Shoot:
-                    return CreateShoot(startingCell);
+                    generator = new ShootBranch();
+                    return generator.Create(_mapData, startingCell);
                 case EBranchType.Snake:
-                    return CreateSnake(startingCell);
+                    generator = new SnakeBranch();
+                    return generator.Create(_mapData, startingCell);
                 case EBranchType.Bridge:
-                    return CreateBridge(startingCell);
+                    generator = new BridgeBranch();
+                    return generator.Create(_mapData, startingCell);
                 case EBranchType.Crank:
-                    return CreateCrank(startingCell);
+                    generator = new CrankBranch();
+                    return generator.Create(_mapData, startingCell);
             }
 
             return false;
-        }
-
-        bool CreateShoot(MapTile startingCell)
-        {
-            int stepCount = Random.Range(2, 10);
-
-            MapTile current = startingCell;
-            MapTile neighbor = startingCell.GetRandomUnoccupiedNeighbor(_mapData);
-
-            if (neighbor == null)
-            {
-                return false;
-            }
-
-            int xDiff = current.X - neighbor.X;
-            int yDiff = current.Y - neighbor.Y;
-
-            ECardinal direction = Cardinals.FromCoordinateDifference(xDiff, yDiff);
-
-            while (neighbor != null && stepCount > 0)
-            {
-                neighbor.UpdateCellType(ECellType.Hallway);
-
-                current.ConnectCardinally(direction);
-                current.UpdateTileIDByConnectedNeighbors(_mapData);
-                neighbor.ConnectCardinally(Cardinals.Flip(direction));
-                neighbor.UpdateTileIDByConnectedNeighbors(_mapData);
-
-                current = neighbor;
-                neighbor = current.GetUnoccupiedTileInDirection(_mapData, direction);
-                stepCount--;
-            }
-
-            return true;
-        }
-
-        bool CreateSnake(MapTile startingCell)
-        {
-            int stepCount = Random.Range(3, 20);
-
-            MapTile current = startingCell;
-            MapTile neighbor = startingCell.GetRandomUnoccupiedNeighbor(_mapData);
-
-            if (neighbor == null)
-            {
-                return false;
-            }
-
-            while (neighbor != null && stepCount > 0)
-            {
-                int xDiff = current.X - neighbor.X;
-                int yDiff = current.Y - neighbor.Y;
-
-                ECardinal direction = Cardinals.FromCoordinateDifference(xDiff, yDiff);
-
-                neighbor.UpdateCellType(ECellType.Hallway);
-
-                current.ConnectCardinally(direction);
-                current.UpdateTileIDByConnectedNeighbors(_mapData);
-                neighbor.ConnectCardinally(Cardinals.Flip(direction));
-                neighbor.UpdateTileIDByConnectedNeighbors(_mapData);
-
-                current = neighbor;
-                neighbor = current.GetRandomUnoccupiedNeighbor(_mapData);
-                stepCount--;
-            }
-
-            return true;
-        }
-
-        bool CreateBridge(MapTile startingCell)
-        {
-            MapTile current = startingCell;
-            MapTile neighbor = startingCell.GetRandomUnoccupiedNeighbor(_mapData);
-
-            if (neighbor == null)
-            {
-                return false;
-            }
-
-            List<MapTile> bridgeTiles = new List<MapTile>() { current, neighbor };
-            ECardinal direction = Cardinals.FromCoordinateDifference(current.X - neighbor.X, current.Y - neighbor.Y);
-            
-            bool scanning = true;
-            while (scanning)
-            {
-                current = neighbor;
-                neighbor = current.GetTileInDirection(_mapData, direction);
-
-                if(neighbor == null || neighbor.CellType == ECellType.Invalid)
-                {
-                    return false;
-                }
-                else if(neighbor.CellType == ECellType.Hallway || neighbor.CellType == ECellType.PrimaryRoom)
-                {
-                    scanning = false;
-                }
-
-                bridgeTiles.Add(neighbor);
-            }
-
-            for(int i=0;i<bridgeTiles.Count;i++)
-            {
-                if(i < bridgeTiles.Count - 1)
-                {
-                    bridgeTiles[i].ConnectCardinally(direction);
-                }
-                if(i > 0)
-                {
-                    bridgeTiles[i].ConnectCardinally(Cardinals.Flip(direction));
-                }
-                if(i < bridgeTiles.Count - 1 && i > 0)
-                {
-                    bridgeTiles[i].UpdateCellType(ECellType.Hallway);
-                }
-            }
-
-            foreach(var tile in bridgeTiles)
-            {
-                tile.UpdateTileIDByConnectedNeighbors(_mapData);
-            }
-
-            return true;
-        }
-
-        bool CreateCrank(MapTile startingCell)
-        {
-            List<MapTile> toUpdate = new List<MapTile>();
-
-            MapTile current = startingCell;
-            MapTile neighbor = startingCell.GetRandomUnoccupiedNeighbor(_mapData);
-
-            if (neighbor == null)
-            {
-                return false;
-            }
-
-            toUpdate.Add(current);
-            toUpdate.Add(neighbor);
-
-            int xDiff = current.X - neighbor.X;
-            int yDiff = current.Y - neighbor.Y;
-
-            ECardinal direction = Cardinals.FromCoordinateDifference(xDiff, yDiff);
-            bool connected = false;
-
-            bool clockwise = Random.Range(0, 2) == 0;
-
-            while (neighbor != null)
-            {
-                if (!connected)
-                {
-                    neighbor.UpdateCellType(ECellType.Hallway);
-                }
-
-                current.ConnectCardinally(direction);
-                neighbor.ConnectCardinally(Cardinals.Flip(direction));
-
-                if (connected)
-                    break;
-
-                if (Random.Range(0, 4) == 0)
-                {
-                    direction = Cardinals.Rotate(direction, clockwise);
-                }
-
-                current = neighbor;
-                neighbor = current.GetTileInDirection(_mapData, direction);
-
-                if (neighbor != null)
-                {
-                    if (neighbor.CellType == ECellType.Invalid)
-                    {
-                        neighbor = null;
-                    }
-                    else
-                    {
-                        toUpdate.Add(neighbor);
-                        if (current.CanConnectToTile(neighbor))
-                        {
-                            connected = true;
-                        }
-                    }
-                }
-            }
-
-            foreach (var cell in toUpdate)
-                cell.UpdateTileIDByConnectedNeighbors(_mapData);
-
-            return true;
         }
     }
 }
