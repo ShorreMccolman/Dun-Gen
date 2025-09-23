@@ -148,13 +148,13 @@ namespace DunGen
         //
         // This sets all occupied neighbor tiles to be connected to this tile, used for the early stage of map generation before creating branches
         //
-        public void ConnectToOccupiedNeighbors(List<MapTile> grid, int width, int height)
+        public void ConnectToOccupiedNeighbors(MapData map)
         {
             if (_type == ECellType.Unoccupied || _type == ECellType.Invalid || _type == ECellType.PremadeRoom)
                 return;
 
             _connections = new bool[4];
-            List<MapTile> neighbors = GetOccupiedNeighbors(grid, width, height);
+            List<MapTile> neighbors = GetOccupiedNeighbors(map);
 
             for (int i = 0; i < 4; i++)
             {
@@ -220,14 +220,14 @@ namespace DunGen
         // This uses neighbor connectedness to update the cells tile ID as opposed to simply relying on whether that neighbor is occupied or not
         // This allows us to place walls in between neighboring cells to create more intricate layouts
         //
-        public void UpdateTileIDByConnectedNeighbors(List<MapTile> grid, int width, int height)
+        public void UpdateTileIDByConnectedNeighbors(MapData map)
         {
             if (_type == ECellType.Unoccupied || _type == ECellType.PremadeRoom || _type == ECellType.Invalid)
                 return;
 
             int bitval = 0;
 
-            List<MapTile> neighbors = GetOccupiedNeighbors(grid, width, height);
+            List<MapTile> neighbors = GetOccupiedNeighbors(map);
 
             bitval += IsCellConnected(ECardinal.W) && neighbors[3].IsCellConnected(ECardinal.N) && IsCellConnected(ECardinal.N) && neighbors[0].IsCellConnected(ECardinal.W) ? 1 : 0;
             bitval += IsCellConnected(ECardinal.W) ? 2 : 0;
@@ -244,9 +244,9 @@ namespace DunGen
         //
         // Gets a random unoccupied tile in one of the four cardinal directions
         //
-        public MapTile GetRandomUnoccupiedNeighbor(List<MapTile> grid, int width, int height)
+        public MapTile GetRandomUnoccupiedNeighbor(MapData map) // List<MapTile> grid, int width, int height)
         {
-            List<MapTile> neighbors = GetUnoccupiedNeighbors(grid, width, height);
+            List<MapTile> neighbors = GetUnoccupiedNeighbors(map);
             neighbors.Shuffle();
 
             for (int i = 0; i < neighbors.Count; i++)
@@ -290,24 +290,11 @@ namespace DunGen
 
         #region Tile Getters
         //
-        // Returns a tile in the grid by position
-        //
-        public static MapTile GetTileByPosition(List<MapTile> grid, int x, int y, int width, int height)
-        {
-            if (x < 0 || x > width - 1 || y < 0 || y > height - 1)
-            {
-                return null;
-            }
-
-            return grid[x + y * width];
-        }
-
-        //
         // Returns an unoccupied tile in the grid by position
         //
-        public static MapTile GetUnoccupiedTileByPosition(List<MapTile> grid, int x, int y, int width, int height)
+        public static MapTile GetUnoccupiedTileByPosition(MapData map, int x, int y)
         {
-            MapTile cell = GetTileByPosition(grid, x, y, width, height);
+            MapTile cell = map.GetTile(x, y);
             if (cell == null || cell.CellType != ECellType.Unoccupied)
             {
                 return null;
@@ -319,22 +306,22 @@ namespace DunGen
         //
         // Returns a list of neighboring unoccupied tiles in the order of N E S W, sets that tile to null if currently occupied
         //
-        public List<MapTile> GetUnoccupiedNeighbors(List<MapTile> grid, int width, int height)
+        public List<MapTile> GetUnoccupiedNeighbors(MapData map)
         {
             List<MapTile> neighbors = new List<MapTile>();
-            neighbors.Add(GetUnoccupiedTileByPosition(grid, _x, _y - 1, width, height));
-            neighbors.Add(GetUnoccupiedTileByPosition(grid, _x + 1, _y, width, height));
-            neighbors.Add(GetUnoccupiedTileByPosition(grid, _x, _y + 1, width, height));
-            neighbors.Add(GetUnoccupiedTileByPosition(grid, _x - 1, _y, width, height));
+            neighbors.Add(GetUnoccupiedTileByPosition(map, _x, _y - 1));
+            neighbors.Add(GetUnoccupiedTileByPosition(map, _x + 1, _y));
+            neighbors.Add(GetUnoccupiedTileByPosition(map, _x, _y + 1));
+            neighbors.Add(GetUnoccupiedTileByPosition(map, _x - 1, _y));
             return neighbors;
         }
 
         //
         // Returns an occupied tile in the grid by position
         //
-        public static MapTile GetOccupiedCell(List<MapTile> grid, int x, int y, int width, int height)
+        public static MapTile GetOccupiedCell(MapData map, int x, int y)
         {
-            MapTile neighbor = GetTileByPosition(grid, x, y, width, height);
+            MapTile neighbor = map.GetTile(x, y);
             if (neighbor == null || neighbor.CellType == ECellType.Unoccupied || neighbor.CellType == ECellType.Invalid)
             {
                 return null;
@@ -346,20 +333,20 @@ namespace DunGen
         //
         // Returns a list of neighboring occupied tiles in the order of N E S W, sets that tile to null if currently occupied
         //
-        public List<MapTile> GetOccupiedNeighbors(List<MapTile> grid, int width, int height)
+        public List<MapTile> GetOccupiedNeighbors(MapData map)
         {
             List<MapTile> neighbors = new List<MapTile>();
-            neighbors.Add(GetOccupiedCell(grid, _x, _y - 1, width, height));
-            neighbors.Add(GetOccupiedCell(grid, _x + 1, _y, width, height));
-            neighbors.Add(GetOccupiedCell(grid, _x, _y + 1, width, height));
-            neighbors.Add(GetOccupiedCell(grid, _x - 1, _y, width, height));
+            neighbors.Add(GetOccupiedCell(map, _x, _y - 1));
+            neighbors.Add(GetOccupiedCell(map, _x + 1, _y));
+            neighbors.Add(GetOccupiedCell(map, _x, _y + 1));
+            neighbors.Add(GetOccupiedCell(map, _x - 1, _y));
             return neighbors;
         }
 
         //
         // Returns the neighboring tile in a particular cardinal direction
         //
-        public MapTile GetTileInDirection(List<MapTile> grid, int width, int height, ECardinal direction)
+        public MapTile GetTileInDirection(MapData map, ECardinal direction)
         {
             int xDiff = 0, yDiff = 0;
             switch (direction)
@@ -382,15 +369,15 @@ namespace DunGen
                     break;
             }
 
-            return GetTileByPosition(grid, _x + xDiff, _y + yDiff, width, height);
+            return map.GetTile(_x + xDiff, _y + yDiff);
         }
 
         //
         // Returns the neighboring tile in a particular cardinal direction if it is unoccupied
         //
-        public MapTile GetUnoccupiedTileInDirection(List<MapTile> grid, int width, int height, ECardinal direction)
+        public MapTile GetUnoccupiedTileInDirection(MapData map, ECardinal direction)
         {
-            MapTile cell = GetTileInDirection(grid, width, height, direction);
+            MapTile cell = GetTileInDirection(map, direction);
             if (cell != null && cell.CellType == ECellType.Unoccupied)
                 return cell;
 

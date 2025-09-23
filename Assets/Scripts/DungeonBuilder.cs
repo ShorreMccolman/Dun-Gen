@@ -4,30 +4,6 @@ using UnityEngine;
 
 namespace DunGen
 {
-    public struct MapData
-    {
-        public List<MapTile> Map { get; private set; }
-        public MapTile Entrance { get; private set; }
-        public ECardinal StartingDirection { get; private set; }
-
-        public int Width { get; private set; }
-        public int Height { get; private set; }
-
-        public MapData(List<MapTile> tiles, MapTile entranceTile, ECardinal startingDir, int width, int height)
-        {
-            Map = tiles;
-            Entrance = entranceTile;
-            StartingDirection = startingDir;
-            Width = width;
-            Height = height;
-        }
-
-        public MapTile GetTile(int x, int y)
-        {
-            return MapTile.GetTileByPosition(Map, x, y, Width, Height);
-        }
-    }
-
     [RequireComponent(typeof(MapGenerator))]
     public class DungeonBuilder : MonoBehaviour
     {

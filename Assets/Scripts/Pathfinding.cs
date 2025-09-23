@@ -158,9 +158,9 @@ namespace DunGen
         //
         // Helper function for finding the nearest tile from a list of given options. Just a one off operation so no need to sort
         //
-        public Room FindNearestNode(Room current, List<Room> options)
+        public MapRoom FindNearestNode(MapRoom current, List<MapRoom> options)
         {
-            Room best = null;
+            MapRoom best = null;
             float bestDistance = float.MaxValue;
 
             MapTile anchor = current.GetAnchorTile();
