@@ -28,12 +28,20 @@ namespace DunGen
         TopDown
     }
 
+    public enum ERoomDistribution
+    {
+        Random,
+        Even,
+        Clustered
+    }
+
     [System.Serializable]
     public struct GenerationSettings
     {
         public EGameStyle GameStyle;
         public int GridWidth, GridHeight;
         public ValueRange PrimaryRooms;
+        public ERoomDistribution RoomDistributionStyle;
         public EBranchType[] BranchTypes;
         public DungeonTileData TileSet;
 

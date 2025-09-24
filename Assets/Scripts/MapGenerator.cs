@@ -178,24 +178,32 @@ namespace DunGen
 
         List<MapRoom> _rooms;
         List<MapRoom> _premadeRooms;
-        List<MapTile> _availableTiles;
 
         MapTile _entrance;
         MapTile _exit;
 
         Pathfinding _pathfinding;
 
-        int _nextRoomID;
-
         bool _isWaiting;
 
         MapData _mapData;
+
+        public static int NextRoomID
+        {
+            get
+            {
+                _nextRoomID++;
+                return _nextRoomID;
+            }
+            private set { _nextRoomID = value; }
+        }
+        static int _nextRoomID;
 
         private void Start()
         {
             _rooms = new List<MapRoom>();
             _premadeRooms = new List<MapRoom>();
-            _nextRoomID = 0;
+            NextRoomID = -1;
         }
 
         void ClearMap()
@@ -211,7 +219,7 @@ namespace DunGen
             _rooms.Clear();
             _premadeRooms.Clear();
             _pathfinding = new Pathfinding();
-            _nextRoomID = 0;
+            NextRoomID = -1;
         }
 
         //
@@ -321,34 +329,13 @@ namespace DunGen
 
             _mapData = new MapData(tiles, width, height);
             _pathfinding.CreateNetwork(width, height, tiles);
-            _availableTiles = new List<MapTile>(tiles);
-        }
-
-        bool IsAreaUnoccupied(int width, int height, MapTile startingTile, out List<MapTile> area)
-        {
-            area = new List<MapTile>();
-
-            for (int i = 0; i < height; i++)
-            {
-                for (int j = 0; j < width; j++)
-                {
-                    MapTile tile = _mapData.GetTile(startingTile.X + j, startingTile.Y + i);
-                    if (!tile.IsAvailable)
-                    {
-                        return false;
-                    }
-
-                    area.Add(tile);
-                }
-            }
-            return true;
         }
 
         void GeneratePremadeRooms(PremadeTile[] tiles)
         {
             foreach(var tile in tiles)
             {
-                List<MapTile> options = new List<MapTile>(_availableTiles);
+                List<MapTile> options = new List<MapTile>(_mapData.Map);
                 options.Shuffle();
 
                 while (options.Count > 0)
@@ -360,7 +347,7 @@ namespace DunGen
                     if(option.X >= 2 && option.Y >= 2 && option.X + tile.Width < _mapData.Width - 2 && option.Y + tile.Height < _mapData.Height - 2)
                     {
                         List<MapTile> placementArea;
-                        if(IsAreaUnoccupied(tile.Width, tile.Height, option, out placementArea))
+                        if(_mapData.IsAreaUnoccupied(tile.Width, tile.Height, option, out placementArea))
                         {
                             foreach (var placedTile in placementArea)
                                 options.Remove(placedTile);
@@ -379,6 +366,7 @@ namespace DunGen
             List<int> exitIndexes = new List<int>();
             List<MapTile> cellsToRemove = new List<MapTile>();
 
+            int roomID = NextRoomID;
             int[] ids = tile.GetGridIDs();
             for(int i=0; i<area.Count; i++)
             {
@@ -387,9 +375,8 @@ namespace DunGen
                 if(ids[i] >= 0)
                 {
                     next.UpdateCellType(ECellType.PremadeRoom);
-                    next.UpdateRoomID(_nextRoomID);
+                    next.UpdateRoomID(roomID);
                 }
-                _availableTiles.Remove(next);
                 cellsToRemove.Add(next);
 
                 // It is safe to assume adjacent tiles will not wrap in the grid since premade rooms are not placed on the map edges
@@ -432,7 +419,6 @@ namespace DunGen
                         {
                             MapTile borderTile = _mapData.Map[index];
                             borderTile.UpdateCellType(ECellType.Invalid);
-                            _availableTiles.Remove(borderTile);
                             cellsToRemove.Add(borderTile);
                         }
                     }
@@ -440,53 +426,13 @@ namespace DunGen
             }
             _pathfinding.RemoveCellsFromGrid(cellsToRemove);
 
-            _premadeRooms.Add(new MapRoom(area, exitTiles, _nextRoomID));
-            _nextRoomID++;
+            _premadeRooms.Add(new MapRoom(area, exitTiles, roomID));
         }
 
         void GeneratePrimaryRooms(int rooms)
         {
-            // Pick random squares to act as primary rooms
-            List<MapTile> options = new List<MapTile>(_availableTiles);
-            options.Shuffle();
-
-            List<List<MapTile>> primaryRooms = new List<List<MapTile>>();
-            for (int i = 0; i < rooms; i++)
-            {
-                MapTile option = options[0];
-                options.RemoveAt(0);
-
-                int roomWidth = Random.Range(2, 4);
-                int roomHeight = Random.Range(2, 4);
-
-                if (roomWidth > _mapData.Width - option.X)
-                    roomWidth = _mapData.Width - option.X;
-                if (roomHeight > _mapData.Height - option.Y)
-                    roomHeight = _mapData.Height - option.Y;
-
-                if (roomWidth < 2 || roomHeight < 2)
-                    continue;
-
-                List<MapTile> placementArea;
-                if(IsAreaUnoccupied(roomWidth, roomHeight, option, out placementArea))
-                {
-                    primaryRooms.Add(placementArea);
-                    PlacePrimaryRoom(placementArea);
-                }
-            }
-        }
-
-        void PlacePrimaryRoom(List<MapTile> area)
-        {
-            foreach(var tile in area)
-            {
-                tile.UpdateCellType(ECellType.PrimaryRoom);
-                tile.UpdateRoomID(_nextRoomID);
-                _availableTiles.Remove(tile);
-            }
-
-            _rooms.Add(new MapRoom(area, _nextRoomID));
-            _nextRoomID++;
+            RoomDistributor distributor = new RandomDistributor();
+            _rooms = distributor.GenerateRooms(_mapData, rooms);
         }
 
         void MergeAdjacentRooms()

@@ -69,5 +69,25 @@ namespace DunGen
             foreach (var tile in Map)
                 tile.UpdateTileProximity(Map, Width, Height);
         }
+
+        public bool IsAreaUnoccupied(int width, int height, MapTile startingTile, out List<MapTile> area)
+        {
+            area = new List<MapTile>();
+
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    MapTile tile = GetTile(startingTile.X + j, startingTile.Y + i);
+                    if (!tile.IsAvailable)
+                    {
+                        return false;
+                    }
+
+                    area.Add(tile);
+                }
+            }
+            return true;
+        }
     }
 }
