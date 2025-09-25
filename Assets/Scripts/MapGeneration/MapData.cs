@@ -89,5 +89,23 @@ namespace DunGen
             }
             return true;
         }
+
+        public List<MapTile> GetSubregion(int x, int y, int width, int height)
+        {
+            List<MapTile> tiles = new List<MapTile>();
+            for(int i=0; i < height; i++)
+            {
+                for(int j=0; j < width; j++)
+                {
+                    MapTile tile = GetTile(x + j, y + i);
+                    if(tile != null)
+                    {
+                        tiles.Add(tile);
+                    }
+                }
+            }
+
+            return tiles;
+        }
     }
 }

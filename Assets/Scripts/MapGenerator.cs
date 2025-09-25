@@ -431,7 +431,7 @@ namespace DunGen
 
         void GeneratePrimaryRooms(int rooms)
         {
-            RoomDistributor distributor = new RandomDistributor();
+            RoomDistributor distributor = new EvenDistributor();
             _rooms = distributor.GenerateRooms(_mapData, rooms);
         }
 
