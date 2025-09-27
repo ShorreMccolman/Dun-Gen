@@ -12,7 +12,7 @@ namespace DunGen
         private void Awake() { _instance = this; }
 
         [SerializeField] GameObject PlayerObject;
-        [SerializeField] DungeonTileData FallbackTileSet;
+        [SerializeField] DunGenData FallbackTileSet;
         [SerializeField] GameMap GameMap;
 
         MapGenerator _generator;
@@ -41,25 +41,25 @@ namespace DunGen
         //
         //
         //
-        void LaunchBuild(DungeonTileData tileSet, MapData mapData)
+        void LaunchBuild(DunGenData tileSet, MapData mapData)
         {
-            SpawnDungeonTiles(tileSet, mapData);
-            IDGPlayerController player = SpawnPlayer(mapData.Entrance, mapData.StartingDirection);
+            if (tileSet == null)
+            {
+                tileSet = FallbackTileSet;
+            }
 
-            GameMap.Initialize(player, mapData);
+            SpawnDungeonTiles(tileSet, mapData);
+            IDGPlayerController player = SpawnPlayer(tileSet, mapData.Entrance, mapData.StartingDirection);
+
+            GameMap.Initialize(player, mapData, tileSet.TileSize);
         }
 
         //
         // This spawns in our 3D dungeon matching the generated map tiles. Uses the chosen 3D tile set objects
         // TODO: Add the ability to set the tile set (not currently neccesary since we only have one tile set at the moment)
         //
-        public void SpawnDungeonTiles(DungeonTileData tileSet, MapData data)
+        public void SpawnDungeonTiles(DunGenData tileSet, MapData data)
         {
-            if(tileSet == null)
-            {
-                tileSet = FallbackTileSet;
-            }
-
             foreach(var premade in tileSet.PremadeTiles)
             {
                 PremadeTile tile = premade.GetComponent<PremadeTile>();
@@ -86,8 +86,8 @@ namespace DunGen
             {
                 if (square.CellType != ECellType.Unoccupied && square.CellType != ECellType.Invalid && !square.IsPremade)
                 {
-                    GameObject go = Instantiate(tileSet.GetTile(square.TileID), transform);
-                    go.transform.SetPositionAndRotation(new Vector3(square.X, 0, -square.Y), Quaternion.identity);
+                    GameObject go = tileSet.GetTile(square.TileID);
+                    go.transform.SetPositionAndRotation(new Vector3(square.X * tileSet.TileSize, 0, -square.Y * tileSet.TileSize), Quaternion.identity);
                 }
             }
         }
@@ -99,9 +99,9 @@ namespace DunGen
         //  user has set up for their game. Right now we're just worrying about supporting our demo controllers so that user specific stuff
         //  can be handled later on.
         //
-        public IDGPlayerController SpawnPlayer(MapTile entrance, ECardinal direction)
+        public IDGPlayerController SpawnPlayer(DunGenData tileSet, MapTile entrance, ECardinal direction)
         {
-            GameObject go = Instantiate(PlayerObject, new Vector3(entrance.X, 0, -entrance.Y), Quaternion.identity);
+            GameObject go = Instantiate(PlayerObject, new Vector3(entrance.X * tileSet.TileSize, 0, -entrance.Y * tileSet.TileSize), Quaternion.identity);
             IDGPlayerController controller = go.GetComponent<IDGPlayerController>();
             return controller;
         }

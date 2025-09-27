@@ -11,12 +11,14 @@ namespace DunGen
 
         Transform _playerTransform;
         MapTile _activeTile;
+        float _tileSize;
 
-        public void Initialize(IDGPlayerController player, MapData map)
+        public void Initialize(IDGPlayerController player, MapData map, float tileSize)
         {
             _map = map;
             _player = player;
             _playerTransform = _player.GetTransform();
+            _tileSize = tileSize;
         }
 
         private void Update()
@@ -42,7 +44,7 @@ namespace DunGen
             float xPos = _playerTransform.position.x;
             float yPos = -_playerTransform.position.z;
 
-            MapTile tile = _map.GetTile(Mathf.RoundToInt(xPos), Mathf.RoundToInt(yPos));
+            MapTile tile = _map.GetTile(Mathf.RoundToInt(xPos / _tileSize), Mathf.RoundToInt(yPos / _tileSize));
 
             if(tile == null)
             {

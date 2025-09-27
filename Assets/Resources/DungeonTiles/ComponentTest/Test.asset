@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a9bdb304a30fec4d97fda7a795a1d4d, type: 3}
+  m_Name: Test
+  m_EditorClassIdentifier: 
+  tileSize: 3
+  PremadeTiles: []
+  Floor: {fileID: 977119882810729447, guid: c58d8ff06e5c93545ac40a809e286895, type: 3}
+  Wall: {fileID: 2317916382775729692, guid: 0b6f68c5933197540bd0088c56af1618, type: 3}
+  InnerCorner: {fileID: 8995291905145435229, guid: c591270c3ee10724b920b828a5b610a2, type: 3}

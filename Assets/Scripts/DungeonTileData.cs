@@ -8,8 +8,19 @@ using UnityEngine;
 
 namespace DunGen
 {
+    public abstract class DunGenData : ScriptableObject
+    {
+        [SerializeField] float tileSize = 1f;
+        public float TileSize => tileSize;
+
+        public GameObject[] PremadeTiles;
+
+        public abstract GameObject GetTile(int id);
+    }
+
+
     [CreateAssetMenu(menuName = "DoneGen/Tile Set")]
-    public class DungeonTileData : ScriptableObject
+    public class DungeonTileData : DunGenData
     {
         public static readonly int[] Island = { 0 };
         public static readonly int[] EndPieces = { 2, 8, 16, 64 };
@@ -72,9 +83,7 @@ namespace DunGen
         public GameObject Tile_254;
         public GameObject Tile_255;
 
-        public GameObject[] PremadeTiles;
-
-        public GameObject GetTile(int id)
+        public override GameObject GetTile(int id)
         {
             switch (id)
             {
