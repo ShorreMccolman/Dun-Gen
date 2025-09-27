@@ -30,9 +30,9 @@ namespace DunGen
 
     public enum ERoomDistribution
     {
-        Random,
-        Even,
-        Clustered
+        Random = 0,
+        Even = 1,
+        Clustered = 2
     }
 
     [System.Serializable]

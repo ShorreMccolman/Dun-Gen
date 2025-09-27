@@ -268,7 +268,7 @@ namespace DunGen
             GeneratePremadeRooms(_requiredTiles);
 
             // Place primary rooms
-            GeneratePrimaryRooms(settings.PrimaryRooms.Evaluate());
+            GeneratePrimaryRooms(settings.RoomDistributionStyle, settings.PrimaryRooms.Evaluate());
 
             // Merge adjacent rooms together
             MergeAdjacentRooms();
@@ -429,9 +429,22 @@ namespace DunGen
             _premadeRooms.Add(new MapRoom(area, exitTiles, roomID));
         }
 
-        void GeneratePrimaryRooms(int rooms)
+        void GeneratePrimaryRooms(ERoomDistribution distribution, int rooms)
         {
-            RoomDistributor distributor = new EvenDistributor();
+            RoomDistributor distributor = null;
+            switch (distribution)
+            {
+                case ERoomDistribution.Random:
+                    distributor = new RandomDistributor();
+                    break;
+                case ERoomDistribution.Even:
+                    distributor = new EvenDistributor();
+                    break;
+
+                default:
+                    distributor = new RandomDistributor();
+                    break;
+            }
             _rooms = distributor.GenerateRooms(_mapData, rooms);
         }
 

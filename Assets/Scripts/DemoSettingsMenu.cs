@@ -11,6 +11,7 @@ public class DemoSettingsMenu : DoneGenMenu
 {
     [SerializeField] TMP_Dropdown TileSetOptions;
     [SerializeField] TMP_Dropdown DungeonStyleOptions;
+    [SerializeField] TMP_Dropdown DistributionOptions;
 
     [SerializeField] TMP_InputField XDimension;
     [SerializeField] TMP_InputField YDimension;
@@ -53,6 +54,11 @@ public class DemoSettingsMenu : DoneGenMenu
             options.Add(new TMP_Dropdown.OptionData(tileSet.name));
         }
         TileSetOptions.options = options;
+
+        List<TMP_Dropdown.OptionData> distros = new List<TMP_Dropdown.OptionData>();
+        distros.Add(new TMP_Dropdown.OptionData("Fully Random"));
+        distros.Add(new TMP_Dropdown.OptionData("Evenly Spread"));
+        DistributionOptions.options = distros;
     }
 
     protected override void OnOpen()
@@ -74,6 +80,8 @@ public class DemoSettingsMenu : DoneGenMenu
         Snake.isOn = types.Contains(EBranchType.Snake);
         Bridge.isOn = types.Contains(EBranchType.Bridge);
         Crank.isOn = types.Contains(EBranchType.Crank);
+
+        DistributionOptions.value = (int)ERoomDistribution.Random;
     }
 
     public void PreviewCurrentSettingsPressed()
@@ -129,7 +137,8 @@ public class DemoSettingsMenu : DoneGenMenu
             GridHeight = int.Parse(YDimension.text),
             PrimaryRooms = new ValueRange((int)RoomCount.LowValue, (int)RoomCount.HighValue),
             BranchTypes = branchTypes.ToArray(),
-            TileSet = _loadedTileSets[TileSetOptions.value]
+            TileSet = _loadedTileSets[TileSetOptions.value],
+            RoomDistributionStyle = (ERoomDistribution)DistributionOptions.value
         };
 
         return settings;
