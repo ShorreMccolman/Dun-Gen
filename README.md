@@ -1,4 +1,4 @@
-Latest dev log video
+## Latest dev log video
 [![Dev Log](https://img.youtube.com/vi/ld-PefeG2OE/0.jpg)](https://www.youtube.com/watch?v=ld-PefeG2OE)
 
 ## Tool for developers
