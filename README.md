@@ -1,3 +1,6 @@
+Latest dev log video
+[![Dev Log](https://img.youtube.com/vi/ld-PefeG2OE/0.jpg)](https://www.youtube.com/watch?v=ld-PefeG2OE)
+
 ## Tool for developers
 Dun Gen is a procedural map generation tool with the intention to give other developers the ability to easily add randomly generated dungeons into their game.
 This is planned to be released on the Unity asset store but is fairly early in development.
